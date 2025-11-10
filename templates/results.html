@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}OCR + NER Visualization - Results{% endblock %}
+
+{% block content %}
+{% if image_path and extracted_text %}
+<div class="result-section">
+    <div class="result-header">
+        <h2>Results</h2>
+    </div>
+    <div class="result-content">
+        <div class="image-container">
+            <img src="{{ image_path }}" alt="Uploaded image" class="result-image">
+        </div>
+        <div class="text-container">
+            <h3>Extracted text with NER tags:</h3>
+            <div class="extracted-text">{{ extracted_text|safe }}</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="legend">
+    <h3>NER Tags Legend:</h3>
+    <ul>
+        <li><span class="legend-mark ner-per"></span> PER</li>
+        <li><span class="legend-mark ner-loc"></span> LOC</li>
+        <li><span class="legend-mark ner-org"></span> ORG</li>
+        <li><span class="legend-mark ner-date"></span> DATE</li>
+    </ul>
+</div>
+{% endblock %}
