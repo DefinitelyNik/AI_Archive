@@ -1,0 +1,6 @@
+Flask
+Pillow
+easyocr
+navec
+slovnet
+torch
