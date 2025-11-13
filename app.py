@@ -29,7 +29,7 @@ def perform_ner(text):
     markup = ner_model(text)
     return markup
 
-def find_dates_in_text(text):
+def find_dates(text):
     date_pattern = r'\b(\d{1,2}[./\-]\d{1,2}[./\-]\d{4})\b'
     iso_pattern = r'\b(\d{4}-\d{2}-\d{2})\b'
     year_pattern = r'\b(\d{4})\s*(?:г\.?|год|года)\b'
@@ -48,10 +48,10 @@ def find_dates_in_text(text):
     dates.sort(key=lambda x: x[0])
     return dates
 
-def annotate_text_with_ner_and_dates(markup):
+def annotate_text(markup):
     ner_spans = [(span.start, span.stop, span.type.lower()) for span in markup.spans]
 
-    dates = find_dates_in_text(markup.text)
+    dates = find_dates(markup.text)
 
     all_spans = ner_spans + dates
     all_spans.sort(key=lambda x: x[0])
@@ -89,7 +89,7 @@ def index():
             # markup = perform_ner(text_placeholder)
 
             markup = perform_ner(text)
-            annotated_text_html = annotate_text_with_ner_and_dates(markup)
+            annotated_text_html = annotate_text(markup)
 
             image_url = url_for('static', filename=f'uploads/{file.filename}')
 
