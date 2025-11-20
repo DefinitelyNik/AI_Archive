@@ -4,3 +4,6 @@ easyocr
 navec
 slovnet
 torch
+opencv-python
+numpy
+transformers
