@@ -1,12 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}AI Archive - Results{% endblock %}
+{% block title %}OCR + NER Visualization - Results{% endblock %}
 
 {% block content %}
 {% if image_path and extracted_text %}
 <div class="result-section">
     <div class="result-header">
         <h2>Results</h2>
+        <p class="text-type-info">
+            {% if text_type == 'htr' %}
+                Processed as: Handwritten Text (HTR + NER)
+            {% else %}
+                Processed as: Machine Printed Text (OCR + NER)
+            {% endif %}
+        </p>
     </div>
     <div class="result-content">
         <div class="image-container">
@@ -21,7 +28,7 @@
 {% endif %}
 
 <div class="legend">
-    <h3>NER Tags:</h3>
+    <h3>NER Tags Legend:</h3>
     <ul>
         <li><span class="legend-mark ner-per"></span> PER</li>
         <li><span class="legend-mark ner-loc"></span> LOC</li>

@@ -10,12 +10,21 @@
             </label>
             <div class="file-name" id="file-name">No file selected</div>
         </div>
+
+        <div class="form-group">
+            <label for="text_type" class="toggle-label">Text type:</label>
+            <select name="text_type" id="text_type" class="text-type-select">
+                <option value="ocr">Machine Printed Text</option>
+                <option value="htr">Handwritten Text</option>
+            </select>
+        </div>
+
         <button type="submit" class="submit-btn">Process</button>
     </form>
 </div>
 
 <div class="legend">
-    <h3>NER Tags:</h3>
+    <h3>NER Tags Legend:</h3>
     <ul>
         <li><span class="legend-mark ner-per"></span> PER</li>
         <li><span class="legend-mark ner-loc"></span> LOC</li>
@@ -30,7 +39,6 @@
     const fileInput = document.getElementById('image');
     const fileNameDisplay = document.getElementById('file-name');
 
-    // Display file name
     fileInput.addEventListener('change', function() {
         if (fileInput.files.length > 0) {
             fileNameDisplay.textContent = fileInput.files[0].name;
