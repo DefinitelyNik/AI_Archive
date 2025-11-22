@@ -8,10 +8,40 @@ navec = Navec.load(navec_path)
 ner_model = NER.load('slovnet_ner_news_v1.tar')
 ner_model.navec(navec)
 
+def translate_text(text):
+    replacements = {
+        'ѣ': 'е',
+        'Ѣ': 'Е',
+        'i': 'и',
+        'I': 'И',
+        'І': 'И',
+        'і': 'и',
+        'ѵ': 'и',
+        'Ѵ': 'И',
+        'ѳ': 'ф',
+        'Ѳ': 'Ф',
+        "ћ": 'e',
+        'y': 'ы' # возможно, неправильно
+    }
+
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+
+    text = re.sub(r'ъ(\s|[.,;:!?—–\n\"\'\)\]])', r'\1', text)
+    text = re.sub(r'(\s|[.,;:!?—–\n\"\'(\[])ъ', r'\1', text)
+
+    text = text.replace('ъ', '')
+    text = text.replace('Ъ', '')
+
+    text = re.sub(r'\s+', ' ', text)
+    text = re.sub(r'\n\s*\n', '\n\n', text)
+
+    return text.strip()
+
 def find_dates(text):
     date_pattern = r'\b(\d{1,2}[./\-]\d{1,2}[./\-]\d{4})\b'
     iso_pattern = r'\b(\d{4}-\d{2}-\d{2})\b'
-    year_pattern = r'\b(\d{4})\s*(?:г\.?|год|года)\b'
+    year_pattern = r'\b(\d{4})\s*(?:г\.?|год|года|году|годах)\b'
     year_decade_pattern = r'\b(?:в\s+)?(\d{3}0)-[хxs]\s*(?:годах|годов|году|год|гг\.?)?\b'
 
     dates = []

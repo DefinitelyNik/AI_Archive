@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}NER Check - Text Analysis{% endblock %}
+
+{% block content %}
+<div class="input-section">
+    <form method="POST" class="upload-form">
+        <div class="form-group">
+            <label for="text" class="upload-label">
+                <span class="upload-text">Enter text to analyze</span>
+            </label>
+            <textarea name="text" id="text" class="text-input" placeholder="Paste your text here..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="checkbox-label">
+                <input type="checkbox" name="translate" id="translate" value="1">
+                Translate pre-revolutionary Russian to post-revolutionary
+            </label>
+        </div>
+
+        <button type="submit" class="submit-btn">Analyze Text</button>
+    </form>
+</div>
+
+{% if extracted_text %}
+<div class="result-section">
+    <div class="result-header">
+        <h2>NER Analysis Results</h2>
+    </div>
+    <div class="result-content">
+        <div class="text-container">
+            <h3>Analyzed text with NER tags:</h3>
+            <div class="extracted-text">{{ extracted_text|safe }}</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="legend">
+    <h3>NER Tags Legend:</h3>
+    <ul>
+        <li><span class="legend-mark ner-per"></span> PER</li>
+        <li><span class="legend-mark ner-loc"></span> LOC</li>
+        <li><span class="legend-mark ner-org"></span> ORG</li>
+        <li><span class="legend-mark ner-date"></span> DATE</li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const textInput = document.getElementById('text');
+    const submitBtn = document.querySelector('.submit-btn');
+
+    textInput.addEventListener('input', function() {
+        if (textInput.value.trim() === '') {
+            submitBtn.disabled = true;
+        } else {
+            submitBtn.disabled = false;
+        }
+    });
+
+    if (textInput.value.trim() === '') {
+        submitBtn.disabled = true;
+    }
+</script>
+{% endblock %}

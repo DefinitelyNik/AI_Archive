@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}AI Archive{% endblock %}</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -11,10 +12,12 @@
         <header class="header">
             <div class="header-content">
                 <div class="logo">
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo-img">
                     <h1>AI Archive</h1>
                 </div>
                 <nav class="nav-tabs">
                     <a href="{{ url_for('index') }}" class="nav-link">Home</a>
+                    <a href="{{ url_for('ner_check') }}" class="nav-link">NER Check</a>
                     <a href="#" class="nav-link">About us</a>
                     <a href="#" class="nav-link">Documentation</a>
                     <a href="#" class="nav-link">API</a>
@@ -55,7 +58,6 @@
                 <div class="footer-section">
                     <h4>Contact</h4>
                     <p>Email: support@example.com</p>
-                    <p>Phone: +7 (965) 317-12-20</p>
                 </div>
             </div>
             <div class="footer-bottom">

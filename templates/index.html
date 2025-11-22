@@ -19,7 +19,14 @@
             </select>
         </div>
 
-        <button type="submit" class="submit-btn">Process</button>
+        <div class="form-group">
+            <label class="checkbox-label">
+                <input type="checkbox" name="translate" id="translate" value="1">
+                Translate pre-revolutionary Russian to post-revolutionary
+            </label>
+        </div>
+
+        <button type="submit" class="submit-btn" id="submit-btn">Process</button>
     </form>
 </div>
 
@@ -38,13 +45,21 @@
 <script>
     const fileInput = document.getElementById('image');
     const fileNameDisplay = document.getElementById('file-name');
+    const submitBtn = document.getElementById('submit-btn');
 
     fileInput.addEventListener('change', function() {
         if (fileInput.files.length > 0) {
             fileNameDisplay.textContent = fileInput.files[0].name;
+            submitBtn.disabled = false;
         } else {
             fileNameDisplay.textContent = 'No file selected';
+            submitBtn.disabled = true;
         }
     });
+
+    // Инициализация состояния кнопки при загрузке страницы
+    if (fileInput.files.length === 0) {
+        submitBtn.disabled = true;
+    }
 </script>
 {% endblock %}

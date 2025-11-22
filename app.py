@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for
 from ocr import perform_ocr
-from ner import perform_ner
+from ner import perform_ner, translate_text
 from htr import perform_htr
 import os
 
@@ -18,6 +18,7 @@ def index():
 
         file = request.files['image']
         text_type = request.form['text_type']
+        translate = 'translate' in request.form
 
         if file.filename == '':
             return redirect(request.url)
@@ -28,17 +29,17 @@ def index():
 
             if text_type == 'ocr':
                 text = perform_ocr(filepath)
-            else:  # htr
+            else:
                 _, text = perform_htr(filepath)
 
-            # text_placeholder = "Объединивший СССР и страны народной демократии Совет экономической взаимопомощи стал одним из крупнейших в мире проектов международной экономической интеграции. Сама задача развития кооперации между государствами Восточной Европы представлялась очень сложной. Изначально они были слабо связаны между собой в экономическом плане: в 1938 г. для Болгарии, Венгрии, Польши, Румынии и Чехословакии торговля друг с другом составляла всего 11,5% от их общего товарооборота, в то время как доля одной только Германии – 23,3%. Однако уже в 1959 г. торговля внутри СЭВ составляла для каждой из стран в среднем 75% от внешнего товарооборота. Во многом благодаря интеграции были достигнуты серьезные успехи в области промышленного развития стран народной демократии. По оценкам западных аналитиков, к концу 1957 г. Москва предоставила другим странам СЭВ кредитов на сумму 28 млрд руб. (примерно 7 млрд долл.). Одна только Болгария получила кредитов на 8 млрд руб. (2 млрд долл.), т. е. больше, чем Голландия (1 млрд долл.), Италия (1,3 млрд долл.) или ФРГ (1,3 млрд долл.) в рамках реализации плана Маршалла в 1948–1951 гг"
-            # annotated_text = perform_ner(text_placeholder)
+            if translate:
+                text = translate_text(text)
 
             annotated_text = perform_ner(text)
 
             image_url = url_for('static', filename=f'uploads/{file.filename}')
 
-            return redirect(url_for('results', image_path=image_url, extracted_text=annotated_text, text_type=text_type))
+            return redirect(url_for('results', image_path=image_url, extracted_text=annotated_text, text_type=text_type, translate=translate))
 
     return render_template('index.html')
 
@@ -47,11 +48,27 @@ def results():
     image_path = request.args.get('image_path')
     extracted_text = request.args.get('extracted_text')
     text_type = request.args.get('text_type', 'ocr')
+    translate = request.args.get('translate', 'False') == 'True'
 
     if not image_path or not extracted_text:
         return redirect(url_for('index'))
 
-    return render_template('results.html', image_path=image_path, extracted_text=extracted_text, text_type=text_type)
+    return render_template('results.html', image_path=image_path, extracted_text=extracted_text, text_type=text_type, translate=translate)
+
+
+@app.route('/ner_check', methods=['GET', 'POST'])
+def ner_check():
+    extracted_text = None
+    translate = False
+    if request.method == 'POST':
+        text = request.form.get('text', '')
+        translate = 'translate' in request.form
+        if text:
+            if translate:
+                text = translate_text(text)
+            extracted_text = perform_ner(text)
+
+    return render_template('ner_check.html', extracted_text=extracted_text, translate=translate)
 
 if __name__ == '__main__':
     app.run(debug=True)

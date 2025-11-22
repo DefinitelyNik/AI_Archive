@@ -67,9 +67,22 @@ body {
   gap: 15px;
 }
 
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+}
+
 .logo h1 {
   font-size: 1.5rem;
   color: var(--text-primary);
+  margin: 0;
 }
 
 .nav-tabs {
@@ -143,12 +156,44 @@ body {
   color: var(--text-primary);
 }
 
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
 .text-type-select {
   padding: 8px;
   border: 1px solid var(--border);
   border-radius: 4px;
   background-color: var(--bg-tertiary);
   color: var(--text-primary);
+}
+
+.text-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 1rem;
+  resize: vertical;
+  min-height: 150px;
+}
+
+.text-input:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 .upload-label {
@@ -187,8 +232,14 @@ body {
   transition: background-color 0.2s;
 }
 
-.submit-btn:hover {
+.submit-btn:hover:not(:disabled) {
   background-color: var(--accent-hover);
+}
+
+.submit-btn:disabled {
+  background-color: #555;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .result-section {
