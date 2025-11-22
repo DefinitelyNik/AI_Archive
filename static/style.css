@@ -13,7 +13,7 @@
   --mark-date: #b3b34d;
 }
 
-.light-theme {
+body.light-theme {
   --bg-primary: #ffffff;
   --bg-secondary: #f5f5f5;
   --bg-tertiary: #e0e0e0;
