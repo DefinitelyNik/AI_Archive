@@ -8,7 +8,22 @@ navec = Navec.load(navec_path)
 ner_model = NER.load('slovnet_ner_news_v1.tar')
 ner_model.navec(navec)
 
-def translate_text(text):
+
+def translate_text(text: str) -> str:
+    """
+    Translates pre-revolutionary Russian text to post-revolutionary Russian.
+
+    Args:
+        text (str): Input text with pre-revolutionary characters.
+
+    Returns:
+        str: Translated text with modern Russian characters.
+
+    Example:
+        >>> translated = translate_text('Нѣкоторый текст съ дореволюціонными буквами')
+        >>> print(translated)
+        'Некоторый текст с дореволюционными буквами'
+    """
     replacements = {
         'ѣ': 'е',
         'Ѣ': 'Е',
@@ -21,7 +36,7 @@ def translate_text(text):
         'ѳ': 'ф',
         'Ѳ': 'Ф',
         "ћ": 'e',
-        'y': 'ы' # возможно, неправильно
+        'y': 'ы'  # возможно, неправильно
     }
 
     for old, new in replacements.items():
@@ -38,7 +53,22 @@ def translate_text(text):
 
     return text.strip()
 
-def find_dates(text):
+
+def find_dates(text: str) -> list:
+    """
+    Finds dates in various formats within a text.
+
+    Args:
+        text (str): Input text to search for dates.
+
+    Returns:
+        list: List of tuples (start_pos, end_pos, 'date') for each found date.
+
+    Example:
+        >>> dates = find_dates('Я родился 15.03.1990.')
+        >>> print(dates)
+        [(11, 21, 'date')]
+    """
     date_pattern = r'\b(\d{1,2}[./\-]\d{1,2}[./\-]\d{4})\b'
     iso_pattern = r'\b(\d{4}-\d{2}-\d{2})\b'
     year_pattern = r'\b(\d{4})\s*(?:г\.?|год|года|году|годах)\b'
@@ -57,7 +87,22 @@ def find_dates(text):
     dates.sort(key=lambda x: x[0])
     return dates
 
-def annotate_text(markup):
+
+def annotate_text(markup) -> str:
+    """
+    Annotates text with HTML mark tags based on NER and date spans.
+
+    Args:
+        markup: Slovnet markup object containing text and spans.
+
+    Returns:
+        str: Text with HTML mark tags for entities.
+
+    Example:
+        >>> annotated = annotate_text(markup)
+        >>> print(annotated)
+        'Привет <mark class="ner-per">Иван</mark>'
+    """
     ner_spans = [(span.start, span.stop, span.type.lower()) for span in markup.spans]
 
     dates = find_dates(markup.text)
@@ -77,6 +122,21 @@ def annotate_text(markup):
         tokens.append(markup.text[last:])
     return ''.join(tokens)
 
-def perform_ner(text):
+
+def perform_ner(text: str) -> str:
+    """
+    Performs Named Entity Recognition on the input text and returns annotated HTML.
+
+    Args:
+        text (str): Input text to analyze.
+
+    Returns:
+        str: Annotated text with HTML mark tags for entities.
+
+    Example:
+        >>> annotated = perform_ner('Иван живет в Москве.')
+        >>> print(annotated)
+        '<mark class="ner-per">Иван</mark> живет в <mark class="ner-loc">Москве</mark>.'
+    """
     markup = ner_model(text)
     return annotate_text(markup)

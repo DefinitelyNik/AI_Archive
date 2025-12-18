@@ -5,7 +5,17 @@ from transformers import VisionEncoderDecoderModel, TrOCRProcessor
 import easyocr
 import statistics
 
-def group_by_lines(detection_results, y_tolerance=10):
+def group_by_lines(detection_results: list, y_tolerance: int = 10) -> list:
+    """
+    Groups detected text fragments into lines based on Y-coordinates.
+
+    Args:
+        detection_results (list): Results from EasyOCR readtext.
+        y_tolerance (int): Tolerance for grouping fragments into lines (default 10).
+
+    Returns:
+        list: List of lines, where each line is a list of (bbox, text, prob) tuples.
+    """
     sorted_results = sorted(detection_results, key=lambda x: min([pt[1] for pt in x[0]]))
 
     lines = []
@@ -35,7 +45,29 @@ def group_by_lines(detection_results, y_tolerance=10):
 
     return lines
 
-def perform_htr(image_path, model_name ="kazars24/trocr-base-handwritten-ru", y_tolerance = 10):
+
+def perform_htr(image_path: str, model_name: str = "kazars24/trocr-base-handwritten-ru",
+                y_tolerance: int = 10) -> tuple:
+    """
+    Performs Handwritten Text Recognition (HTR) on a multi-line image.
+
+    Args:
+        image_path (str): Path to the input image file.
+        model_name (str): Name of the TrOCR model to use (default 'kazars24/trocr-base-handwritten-ru').
+        y_tolerance (int): Tolerance for grouping text fragments into lines (default 10).
+
+    Returns:
+        tuple: A tuple containing:
+            - list: Recognized lines of text.
+            - str: Full text joined by newlines.
+
+    Example:
+        >>> lines, full_text = perform_htr('path/to/image.jpg')
+        >>> print(lines)
+        ['Line 1 text', 'Line 2 text']
+        >>> print(full_text)
+        'Line 1 text\\nLine 2 text'
+    """
     image = cv2.imread(image_path)
 
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
