@@ -3,6 +3,7 @@ from flasgger import Swagger, swag_from
 from ocr import perform_ocr
 from htr import perform_htr
 from ner import perform_ner, translate_text
+from relations import extract_relations
 import os
 
 app = Flask(__name__)
@@ -15,7 +16,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 template = {
     "swagger": "2.0",
     "info": {
-        "title": "AI Archive API",
+        "title": "OCR + NER API",
         "description": "API для обработки изображений и текста с помощью OCR, HTR и NER",
         "version": "1.0.0"
     },
@@ -77,19 +78,20 @@ def index():
 
             if text_type == 'ocr':
                 text = perform_ocr(filepath)
-            else:
+            else:  # htr
                 _, text = perform_htr(filepath)
 
             if translate:
                 text = translate_text(text)
 
-            annotated_text = perform_ner(text)
+            annotated_text_html = perform_ner(text)
+            relations = extract_relations(text)
 
             image_url = url_for('static', filename=f'uploads/{file.filename}')
 
             return redirect(
-                url_for('results', image_path=image_url, extracted_text=annotated_text, text_type=text_type,
-                        translate=translate))
+                url_for('results', image_path=image_url, extracted_text=annotated_text_html, text_type=text_type,
+                        translate=translate, relations=relations))
 
     return render_template('index.html')
 
@@ -125,6 +127,11 @@ def results():
         required: false
         default: false
         description: Был ли применён перевод
+      - in: query
+        name: relations
+        type: string
+        required: false
+        description: Извлечённые отношения
     responses:
       200:
         description: Страница с результатами
@@ -133,12 +140,20 @@ def results():
     extracted_text = request.args.get('extracted_text')
     text_type = request.args.get('text_type', 'ocr')
     translate = request.args.get('translate', 'False') == 'True'
+    relations = request.args.get('relations', '[]')
+
+    # Преобразуем строку в список
+    import ast
+    try:
+        relations = ast.literal_eval(relations)
+    except:
+        relations = []
 
     if not image_path or not extracted_text:
         return redirect(url_for('index'))
 
     return render_template('results.html', image_path=image_path, extracted_text=extracted_text, text_type=text_type,
-                           translate=translate)
+                           translate=translate, relations=relations)
 
 
 @app.route('/ner_check', methods=['GET', 'POST'])
@@ -164,6 +179,7 @@ def ner_check():
         description: Страница с результатами NER
     """
     extracted_text = None
+    relations = []
     translate = False
     if request.method == 'POST':
         text = request.form.get('text', '')
@@ -172,8 +188,9 @@ def ner_check():
             if translate:
                 text = translate_text(text)
             extracted_text = perform_ner(text)
+            relations = extract_relations(text)
 
-    return render_template('ner_check.html', extracted_text=extracted_text, translate=translate)
+    return render_template('ner_check.html', extracted_text=extracted_text, relations=relations, translate=translate)
 
 
 @app.route('/api/process', methods=['POST'])
@@ -214,6 +231,11 @@ def api_process():
             annotated_text:
               type: string
               description: Текст с NER-тегами
+            relations:
+              type: array
+              items:
+                type: array
+                description: Список кортежей (сущность1, отношение, сущность2)
       400:
         description: Ошибка ввода
     """
@@ -242,10 +264,12 @@ def api_process():
         text = translate_text(text)
 
     annotated_text = perform_ner(text)
+    relations = extract_relations(text)
 
     return {
         'text': text,
-        'annotated_text': annotated_text
+        'annotated_text': annotated_text,
+        'relations': relations
     }
 
 

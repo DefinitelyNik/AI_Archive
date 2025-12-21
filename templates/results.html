@@ -13,6 +13,9 @@
             {% else %}
                 Processed as: Machine Printed Text (OCR + NER)
             {% endif %}
+            {% if translate %}
+                | Translation applied
+            {% endif %}
         </p>
     </div>
     <div class="result-content">
@@ -23,6 +26,21 @@
             <h3>Extracted text with NER tags:</h3>
             <div class="extracted-text">{{ extracted_text|safe }}</div>
         </div>
+
+        {% if relations %}
+        <div class="relations-container">
+            <h3>Extracted Relationships:</h3>
+            <div class="relations-list">
+                {% for relation in relations %}
+                <div class="relation-item">
+                    <span class="entity1">{{ relation[0] }}</span>
+                    <span class="relation-type">{{ relation[1] }}</span>
+                    <span class="entity2">{{ relation[2] }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endif %}
