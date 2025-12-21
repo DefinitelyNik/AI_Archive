@@ -1,7 +1,6 @@
-import pytest
-from unittest.mock import patch, MagicMock
-import easyocr
+from unittest.mock import patch
 from ocr import perform_ocr
+
 
 @patch('ocr.ocr_reader')
 def test_perform_ocr(mock_reader):
@@ -16,6 +15,7 @@ def test_perform_ocr(mock_reader):
 
     mock_reader.readtext.assert_called_once_with('dummy_path.jpg')
     assert text == 'Привет Мир'
+
 
 @patch('ocr.ocr_reader')
 def test_perform_ocr_empty_result(mock_reader):

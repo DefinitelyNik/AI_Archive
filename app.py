@@ -1,9 +1,10 @@
 from flask import Flask, render_template, request, redirect, url_for
-from flasgger import Swagger, swag_from
+from flasgger import Swagger
 from ocr import perform_ocr
 from htr import perform_htr
 from ner import perform_ner, translate_text
 from relations import extract_relations
+import ast
 import os
 
 app = Flask(__name__)
@@ -17,7 +18,7 @@ template = {
     "swagger": "2.0",
     "info": {
         "title": "OCR + NER API",
-        "description": "API для обработки изображений и текста с помощью OCR, HTR и NER",
+        "description": "API для AI Archive with ner, ocr and htr models",
         "version": "1.0.0"
     },
     "consumes": [
@@ -90,8 +91,12 @@ def index():
             image_url = url_for('static', filename=f'uploads/{file.filename}')
 
             return redirect(
-                url_for('results', image_path=image_url, extracted_text=annotated_text_html, text_type=text_type,
-                        translate=translate, relations=relations))
+                url_for('results',
+                        image_path=image_url,
+                        extracted_text=annotated_text_html,
+                        text_type=text_type,
+                        translate=translate,
+                        relations=relations))
 
     return render_template('index.html')
 
@@ -140,20 +145,22 @@ def results():
     extracted_text = request.args.get('extracted_text')
     text_type = request.args.get('text_type', 'ocr')
     translate = request.args.get('translate', 'False') == 'True'
-    relations = request.args.get('relations', '[]')
 
-    # Преобразуем строку в список
-    import ast
+    relations_str = request.args.get('relations', '[]')
     try:
-        relations = ast.literal_eval(relations)
-    except:
+        relations = ast.literal_eval(relations_str)
+    except (ValueError, SyntaxError):
         relations = []
 
     if not image_path or not extracted_text:
         return redirect(url_for('index'))
 
-    return render_template('results.html', image_path=image_path, extracted_text=extracted_text, text_type=text_type,
-                           translate=translate, relations=relations)
+    return render_template('results.html',
+                           image_path=image_path,
+                           extracted_text=extracted_text,
+                           text_type=text_type,
+                           translate=translate,
+                           relations=relations)
 
 
 @app.route('/ner_check', methods=['GET', 'POST'])
@@ -190,7 +197,10 @@ def ner_check():
             extracted_text = perform_ner(text)
             relations = extract_relations(text)
 
-    return render_template('ner_check.html', extracted_text=extracted_text, relations=relations, translate=translate)
+    return render_template('ner_check.html',
+                           extracted_text=extracted_text,
+                           relations=relations,
+                           translate=translate)
 
 
 @app.route('/api/process', methods=['POST'])

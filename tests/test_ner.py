@@ -1,8 +1,6 @@
-import pytest
 from unittest.mock import patch, MagicMock
-from navec import Navec
-from slovnet import NER
 from ner import perform_ner, find_dates, annotate_text, translate_text
+
 
 @patch('ner.NER.load')
 @patch('ner.Navec.load')
@@ -29,19 +27,27 @@ def test_perform_ner(mock_navec_load, mock_ner_load):
         result = perform_ner('Тест текст')
         assert result == 'annotated text'
 
+
 def test_find_dates():
     """Тест функции поиска дат"""
-    text = 'Я родился 15.03.1990, а в 1995 году уехал. В 2000-х годах жил в Москве.'
+    text = '''Я родился 15.03.1990,
+              а в 1995 году уехал.
+              В 2000-х годах жил в Москве.'''
     dates = find_dates(text)
 
     assert len(dates) >= 2
-    date_1990_found = any('1990' in text[span_start:span_end] for span_start, span_end, label in dates if label == 'date')
+    date_1990_found = any('1990' in text[span_start:span_end]
+                          for span_start, span_end, label
+                          in dates
+                          if label == 'date')
     assert date_1990_found
+
 
 def test_find_dates_empty():
     """Тест с пустым текстом"""
     dates = find_dates('')
     assert dates == []
+
 
 def test_annotate_text():
     """Тест функции аннотации текста"""
@@ -55,7 +61,9 @@ def test_annotate_text():
 
     with patch('ner.find_dates', return_value=[]):
         result = annotate_text(mock_markup)
-        assert '<mark class="ner-per">Тест </mark>текст' in result or 'Тест' in result
+        ref = '<mark class="ner-per">Тест </mark>текст'
+        assert ref in result or 'Тест' in result
+
 
 def test_translate_text():
     """Тест функции перевода дореволюционного текста"""

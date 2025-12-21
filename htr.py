@@ -5,18 +5,22 @@ from transformers import VisionEncoderDecoderModel, TrOCRProcessor
 import easyocr
 import statistics
 
+
 def group_by_lines(detection_results: list, y_tolerance: int = 10) -> list:
     """
     Groups detected text fragments into lines based on Y-coordinates.
 
     Args:
         detection_results (list): Results from EasyOCR readtext.
-        y_tolerance (int): Tolerance for grouping fragments into lines (default 10).
+        y_tolerance (int): Tolerance for grouping fragments into lines.
 
     Returns:
-        list: List of lines, where each line is a list of (bbox, text, prob) tuples.
+        list: List of lines, where each line
+        is a list of (bbox, text, prob) tuples.
     """
-    sorted_results = sorted(detection_results, key=lambda x: min([pt[1] for pt in x[0]]))
+    sorted_results = sorted(
+        detection_results,
+        key=lambda x: min([pt[1] for pt in x[0]]))
 
     lines = []
     current_line = []
@@ -32,7 +36,9 @@ def group_by_lines(detection_results: list, y_tolerance: int = 10) -> list:
             current_line_y_center = y_center
         elif abs(y_center - current_line_y_center) <= y_tolerance:
             current_line.append((bbox, text, prob))
-            centers = [(min([pt[1] for pt in b]) + max([pt[1] for pt in b])) / 2 for b, t, p in current_line]
+            centers = [
+                (min([pt[1] for pt in b]) + max([pt[1] for pt in b]))
+                / 2 for b, t, p in current_line]
             current_line_y_center = statistics.mean(centers)
         else:
             if current_line:
@@ -46,15 +52,16 @@ def group_by_lines(detection_results: list, y_tolerance: int = 10) -> list:
     return lines
 
 
-def perform_htr(image_path: str, model_name: str = "kazars24/trocr-base-handwritten-ru",
+def perform_htr(image_path: str,
+                model_name: str = "kazars24/trocr-base-handwritten-ru",
                 y_tolerance: int = 10) -> tuple:
     """
     Performs Handwritten Text Recognition (HTR) on a multi-line image.
 
     Args:
         image_path (str): Path to the input image file.
-        model_name (str): Name of the TrOCR model to use (default 'kazars24/trocr-base-handwritten-ru').
-        y_tolerance (int): Tolerance for grouping text fragments into lines (default 10).
+        model_name (str): Name of the TrOCR model to use.
+        y_tolerance (int): Tolerance for grouping text fragments into lines.
 
     Returns:
         tuple: A tuple containing:
@@ -114,13 +121,15 @@ def perform_htr(image_path: str, model_name: str = "kazars24/trocr-base-handwrit
 
         line_image = pil_image.crop((x_min, y_min, x_max, y_max))
 
-        pixel_values = processor(images=line_image, return_tensors="pt").pixel_values
+        pixel_values = processor(images=line_image,
+                                 return_tensors="pt").pixel_values
         pixel_values = pixel_values.to(device)
 
         with torch.no_grad():
             outputs = model.generate(pixel_values)
 
-        line_text = processor.batch_decode(outputs, skip_special_tokens=True)[0]
+        line_text = processor.batch_decode(outputs,
+                                           skip_special_tokens=True)[0]
         final_recognized_lines.append(line_text)
         full_text_parts.append(line_text)
 

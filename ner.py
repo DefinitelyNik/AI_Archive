@@ -20,7 +20,7 @@ def translate_text(text: str) -> str:
         str: Translated text with modern Russian characters.
 
     Example:
-        >>> translated = translate_text('Нѣкоторый текст съ дореволюціонными буквами')
+        >>> translated = translate_text('Текст съ дореволюціонными буквами')
         >>> print(translated)
         'Некоторый текст с дореволюционными буквами'
     """
@@ -103,7 +103,8 @@ def annotate_text(markup) -> str:
         >>> print(annotated)
         'Привет <mark class="ner-per">Иван</mark>'
     """
-    ner_spans = [(span.start, span.stop, span.type.lower()) for span in markup.spans]
+    ner_spans = [
+        (span.start, span.stop, span.type.lower()) for span in markup.spans]
 
     dates = find_dates(markup.text)
 
@@ -125,7 +126,7 @@ def annotate_text(markup) -> str:
 
 def perform_ner(text: str) -> str:
     """
-    Performs Named Entity Recognition on the input text and returns annotated HTML.
+    Performs NER on the input text and returns annotated HTML.
 
     Args:
         text (str): Input text to analyze.

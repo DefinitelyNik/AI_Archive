@@ -1,10 +1,9 @@
 import pytest
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import patch, MagicMock
 import cv2
 import numpy as np
-from PIL import Image
-from transformers import VisionEncoderDecoderModel, TrOCRProcessor
 from htr import perform_htr, group_by_lines
+
 
 def test_group_by_lines():
     """Тест функции группировки строк"""
@@ -19,10 +18,12 @@ def test_group_by_lines():
     assert len(result[0]) == 2  # 2 фрагмента в первой строке
     assert len(result[1]) == 1  # 1 фрагмент во второй строке
 
+
 def test_group_by_lines_empty():
     """Тест с пустыми детекциями"""
     result = group_by_lines([])
     assert result == []
+
 
 @patch('htr.cv2.imread', return_value=None)
 def test_perform_htr_file_not_found(mock_imread):
@@ -30,11 +31,15 @@ def test_perform_htr_file_not_found(mock_imread):
     with pytest.raises(cv2.error):
         perform_htr('nonexistent.jpg')
 
+
 @patch('htr.cv2.imread')
 @patch('htr.cv2.cvtColor')
 @patch('htr.Image.fromarray')
 @patch('htr.easyocr.Reader')
-def test_perform_htr_no_detections(mock_reader_class, mock_fromarray, mock_cvtColor, mock_imread):
+def test_perform_htr_no_detections(mock_reader_class,
+                                   mock_fromarray,
+                                   mock_cvtColor,
+                                   mock_imread):
     """Тест perform_htr с пустыми детекциями"""
     mock_imread.return_value = np.zeros((100, 100, 3), dtype=np.uint8)
     mock_cvtColor.return_value = np.zeros((100, 100, 3), dtype=np.uint8)

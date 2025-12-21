@@ -2,6 +2,7 @@ import easyocr
 
 ocr_reader = easyocr.Reader(['ru'], gpu=True)
 
+
 def perform_ocr(image_path: str) -> str:
     """
     Performs OCR on an image and returns the extracted text.

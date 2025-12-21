@@ -1,7 +1,7 @@
 """
 Relations Extraction Module
 
-This module provides functions for extracting various types of relationships from text.
+This module provides functions for extracting relations from text.
 For demo purposes, it returns placeholder relationships.
 """
 
@@ -17,9 +17,9 @@ def extract_relations(text: str) -> list:
         list: List of tuples containing (entity1, relation, entity2).
 
     Example:
-        >>> relations = extract_relations('Иван родился в Москве. Мария - мать Ивана.')
+        >>> relations = extract_relations('Иван родился в Москве.')
         >>> print(relations)
-        [('Иван', 'родился в', 'Москве'), ('Мария', 'мать', 'Ивана')]
+        [('Иван', 'родился в', 'Москве')]
     """
     # Placeholder для демонстрации
     demo_relations = [
