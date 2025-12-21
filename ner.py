@@ -72,7 +72,8 @@ def find_dates(text: str) -> list:
     date_pattern = r'\b(\d{1,2}[./\-]\d{1,2}[./\-]\d{4})\b'
     iso_pattern = r'\b(\d{4}-\d{2}-\d{2})\b'
     year_pattern = r'\b(\d{4})\s*(?:г\.?|год|года|году|годах)\b'
-    year_decade_pattern = r'\b(?:в\s+)?(\d{3}0)-[хxs]\s*(?:годах|годов|году|год|гг\.?)?\b'
+    year_decade_pattern = (r'\b(?:в\s+)?(\d{3}0)-[хxs]\s*'
+                           r'(?:годах|годов|году|год|гг\.?)?\b')
 
     dates = []
     for match in re.finditer(date_pattern, text):
@@ -137,7 +138,8 @@ def perform_ner(text: str) -> str:
     Example:
         >>> annotated = perform_ner('Иван живет в Москве.')
         >>> print(annotated)
-        '<mark class="ner-per">Иван</mark> живет в <mark class="ner-loc">Москве</mark>.'
+        '<mark class="ner-per">Иван</mark> живет в
+        <mark class="ner-loc">Москве</mark>.'
     """
     markup = ner_model(text)
     return annotate_text(markup)
