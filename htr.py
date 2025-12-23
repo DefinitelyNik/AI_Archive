@@ -1,9 +1,13 @@
 import cv2
 from PIL import Image
 import torch
+import os
 from transformers import VisionEncoderDecoderModel, TrOCRProcessor
 import easyocr
 import statistics
+import pickle
+
+print('CUDA:', torch.cuda.is_available())
 
 
 def group_by_lines(detection_results: list, y_tolerance: int = 10) -> list:
@@ -53,7 +57,8 @@ def group_by_lines(detection_results: list, y_tolerance: int = 10) -> list:
 
 
 def perform_htr(image_path: str,
-                model_name: str = "kazars24/trocr-base-handwritten-ru",
+                model_name: str = "Kansallisarkisto_cyrillic-htr-model",
+                state_dict_path: str | None = './best_model.pt',
                 y_tolerance: int = 10) -> tuple:
     """
     Performs Handwritten Text Recognition (HTR) on a multi-line image.
@@ -75,63 +80,75 @@ def perform_htr(image_path: str,
         >>> print(full_text)
         'Line 1 text\\nLine 2 text'
     """
-    image = cv2.imread(image_path)
+    try:
+        with open(f'{image_path}.pkl', 'rb') as f:
+            full_text_parts = pickle.load(f)
+    except:
+        image = cv2.imread(image_path)
 
-    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    pil_image = Image.fromarray(image_rgb)
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        pil_image = Image.fromarray(image_rgb)
 
-    reader = easyocr.Reader(['ru'], gpu=True)
-    detection_results = reader.readtext(image_rgb, paragraph=False)
+        reader = easyocr.Reader(['ru'], gpu=True)
+        detection_results = reader.readtext(image_rgb, paragraph=False)
 
-    if not detection_results:
-        return [], ""
+        if not detection_results:
+            return [], ""
 
-    grouped_lines = group_by_lines(detection_results, y_tolerance=y_tolerance)
+        grouped_lines = group_by_lines(detection_results, y_tolerance=y_tolerance)
 
-    processor = TrOCRProcessor.from_pretrained(model_name, use_fast=False)
-    model = VisionEncoderDecoderModel.from_pretrained(model_name)
+        processor = TrOCRProcessor.from_pretrained(os.path.join(model_name, 'processor'), use_fast=False)
+        model = VisionEncoderDecoderModel.from_pretrained(model_name)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = model.to(device)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model.to(device)
+        if state_dict_path:
+            model_checkpoint = torch.load(state_dict_path)
+        model.load_state_dict(model_checkpoint['model_state_dict'])
 
-    final_recognized_lines = []
-    full_text_parts = []
+        final_recognized_lines = []
+        full_text_parts = []
 
-    for line_idx, line_fragments in enumerate(grouped_lines):
-        if not line_fragments:
-            final_recognized_lines.append("")
-            full_text_parts.append("")
-            continue
+        for line_idx, line_fragments in enumerate(grouped_lines):
+            if not line_fragments:
+                final_recognized_lines.append("")
+                full_text_parts.append("")
+                continue
 
-        x_cords = []
-        y_cords = []
-        for bbox, _, _ in line_fragments:
-            x_cords.extend([pt[0] for pt in bbox])
-            y_cords.extend([pt[1] for pt in bbox])
+            x_cords = []
+            y_cords = []
+            for bbox, _, _ in line_fragments:
+                x_cords.extend([pt[0] for pt in bbox])
+                y_cords.extend([pt[1] for pt in bbox])
 
-        x_min = min(x_cords)
-        x_max = max(x_cords)
-        y_min = min(y_cords)
-        y_max = max(y_cords)
+            x_min = min(x_cords)
+            x_max = max(x_cords)
+            y_min = min(y_cords)
+            y_max = max(y_cords)
 
-        if x_max <= x_min or y_max <= y_min:
-            final_recognized_lines.append("")
-            full_text_parts.append("")
-            continue
+            if x_max <= x_min or y_max <= y_min:
+                final_recognized_lines.append("")
+                full_text_parts.append("")
+                continue
 
-        line_image = pil_image.crop((x_min, y_min, x_max, y_max))
+            line_image = pil_image.crop((x_min, y_min, x_max, y_max))
 
-        pixel_values = processor(images=line_image,
-                                 return_tensors="pt").pixel_values
-        pixel_values = pixel_values.to(device)
+            pixel_values = processor(images=line_image,
+                                    return_tensors="pt").pixel_values
+            pixel_values = pixel_values.to(device)
 
-        with torch.no_grad():
-            outputs = model.generate(pixel_values)
+            with torch.no_grad():
+                outputs = model.generate(pixel_values)
 
-        line_text = processor.batch_decode(outputs,
-                                           skip_special_tokens=True)[0]
-        final_recognized_lines.append(line_text)
-        full_text_parts.append(line_text)
+            line_text = processor.batch_decode(outputs,
+                                            skip_special_tokens=True)[0]
+            line_text = line_text[0::2] # временная заглушка против пробелов при инференсе
+            final_recognized_lines.append(line_text)
+            full_text_parts.append(line_text)
+            with open(f'{image_path}.pkl', 'wb') as f:
+                pickle.dump(full_text_parts, f)
 
     full_text = "\n".join(full_text_parts)
-    return final_recognized_lines, full_text
+    print(full_text_parts)
+    print(full_text)
+    return full_text_parts, full_text
