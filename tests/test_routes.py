@@ -1,4 +1,10 @@
 import pytest
+import sys
+import os
+
+# Добавляем корневую директорию в PYTHONPATH
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 from app import app
 
 @pytest.fixture
