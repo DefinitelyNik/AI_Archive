@@ -282,6 +282,12 @@ def api_process():
         'relations': relations
     }
 
+@app.route('/test_page')
+def test_page():
+    """
+    Тестовая страница для разработки и расширения тестового покрытия
+    """
+    return render_template('test_page.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
