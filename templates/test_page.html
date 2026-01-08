@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}Test Page{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Тестовая страница</h2>
+    <p>Эта страница предназначена для проверки новых функций и расширения тестового покрытия.</p>
+    <p>Вы можете использовать её для демонстрации работы OCR/HTR/NER вне основного workflow.</p>
+    <a href="{{ url_for('index') }}">← Вернуться на главную</a>
+</div>
+{% endblock %}
