@@ -47,6 +47,13 @@ def test_ner_check_post_empty_text(client):
     assert b'NER Analysis Results' not in response.data
 
 
+def test_test_page_get(client):
+    """Тест GET запроса к тестовой странице"""
+    response = client.get('/test_page')
+    assert response.status_code == 200
+    assert b'Тестовая страница' in response.data
+
+
 @patch("app.perform_ner", return_value="mock ner result")
 def test_ner_check_post_with_text(mock_ner, client):
     """Тест POST запроса к NER Check с текстом"""
@@ -109,8 +116,19 @@ def test_index_post_with_translate(mock_ocr, client):
     assert response.status_code == 302  # Редирект на /results
 
 
-def test_test_page_get(client):
-    """Тест GET запроса к тестовой странице"""
-    response = client.get('/test_page')
-    assert response.status_code == 200
-    assert b'Тестовая страница' in response.data
+@patch("app.perform_ocr", return_value="mock ocr text")
+def test_index_post_with_translate(mock_ocr, client):
+    """Тест POST запроса с флагом перевода"""
+    with open('tests/fixtures/test_image_ner.jpg', 'rb') as img:
+        response = client.post(
+            '/',
+            data={
+                'image': (img, 'test_image.jpg'),
+                'text_type': 'ocr',
+                'translate': '1'
+            },
+            content_type='multipart/form-data'
+        )
+
+    mock_ocr.assert_called_once()
+    assert response.status_code == 302  # Редирект на /results
