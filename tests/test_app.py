@@ -107,3 +107,10 @@ def test_index_post_with_translate(mock_ocr, client):
 
     mock_ocr.assert_called_once()
     assert response.status_code == 302  # Редирект на /results
+
+
+def test_test_page_get(client):
+    """Тест GET запроса к тестовой странице"""
+    response = client.get('/test_page')
+    assert response.status_code == 200
+    assert b'Тестовая страница' in response.data
