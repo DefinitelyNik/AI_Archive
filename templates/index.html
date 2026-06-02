@@ -4,26 +4,26 @@
 
 {% block content %}
 <div class="input-section">
-    <h1>Загрузка изображения</h1>
+    <h1>Upload an image</h1>
 
     <form method="POST" enctype="multipart/form-data" class="upload-form">
         <div class="form-group">
-            <label class="toggle-label" for="image">Выберите изображение:</label>
-            <label for="image" class="upload-label">Выбрать файл</label>
+            <label class="toggle-label" for="image">Choose an image:</label>
+            <label for="image" class="upload-label">Choose file</label>
             <input type="file" name="image" id="image" accept="image/*" required style="display: none;">
-            <span class="file-name" id="file-name">Файл не выбран</span>
+            <span class="file-name" id="file-name">No file selected</span>
         </div>
 
         <div class="form-group">
-            <label class="toggle-label">Тип текста:</label>
+            <label class="toggle-label">Text type:</label>
             <select name="text_type" id="text_type" class="text-type-select" onchange="toggleOCRModel()">
-                <option value="ocr">Печатный текст (OCR)</option>
-                <option value="htr">Рукописный текст (HTR)</option>
+                <option value="ocr">Machine Printed Text (OCR)</option>
+                <option value="htr">Handwritten Text (HTR)</option>
             </select>
         </div>
 
         <div class="form-group" id="ocr-model-group">
-            <label class="toggle-label">Модель OCR:</label>
+            <label class="toggle-label">OCR Model:</label>
             <select name="ocr_model" id="ocr_model" class="text-type-select">
                 <option value="easyocr">EasyOCR</option>
                 <option value="tesseract">Tesseract 5 (LSTM)</option>
@@ -33,32 +33,32 @@
         <div class="form-group">
             <label class="checkbox-label">
                 <input type="checkbox" name="translate">
-                Перевести с дореволюционного русского
+                Translate pre-revolutionary Russian to post-revolutionary
             </label>
         </div>
 
-        <button type="submit" class="submit-btn">Обработать</button>
+        <button type="submit" class="submit-btn">Process</button>
     </form>
 </div>
 
 <div class="legend">
-    <h3>Легенда NER-тегов:</h3>
+    <h3>NER Tags Legend:</h3>
     <ul>
         <li>
             <span class="legend-mark ner-per"></span>
-            <span>PER - Персона</span>
+            <span>PER - Person</span>
         </li>
         <li>
             <span class="legend-mark ner-loc"></span>
-            <span>LOC - Местоположение</span>
+            <span>LOC - Location</span>
         </li>
         <li>
             <span class="legend-mark ner-org"></span>
-            <span>ORG - Организация</span>
+            <span>ORG - Organization</span>
         </li>
         <li>
             <span class="legend-mark ner-date"></span>
-            <span>DATE - Дата</span>
+            <span>DATE - Date</span>
         </li>
     </ul>
 </div>
@@ -80,7 +80,6 @@ function toggleOCRModel() {
 document.addEventListener('DOMContentLoaded', function() {
     toggleOCRModel();
 
-    // Обновление имени файла при выборе
     const fileInput = document.getElementById('image');
     const fileName = document.getElementById('file-name');
 
@@ -88,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (this.files && this.files.length > 0) {
             fileName.textContent = this.files[0].name;
         } else {
-            fileName.textContent = 'Файл не выбран';
+            fileName.textContent = 'No file selected';
         }
     });
 });

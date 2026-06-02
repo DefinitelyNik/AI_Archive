@@ -32,6 +32,7 @@ template = {
 
 swagger = Swagger(app, template=template)
 
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     """
@@ -111,6 +112,7 @@ def index():
 
     return render_template('index.html')
 
+
 @app.route('/results')
 def results():
     """
@@ -181,6 +183,7 @@ def results():
                            translate=translate,
                            relations=relations)
 
+
 @app.route('/ner_check', methods=['GET', 'POST'])
 def ner_check():
     """
@@ -219,6 +222,7 @@ def ner_check():
                            extracted_text=extracted_text,
                            relations=relations,
                            translate=translate)
+
 
 @app.route('/api/process', methods=['POST'])
 def api_process():
@@ -308,6 +312,7 @@ def api_process():
         'annotated_text': annotated_text,
         'relations': relations
     }
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

@@ -6,12 +6,12 @@
 {% if image_path and extracted_text %}
 <div class="result-section">
     <div class="result-header">
-        <h2>Результаты обработки</h2>
+        <h2>Results</h2>
         {% if text_type == 'htr' %}
-            <p class="text-type-info">Обработано как: Рукописный текст (HTR + NER)</p>
+            <p class="text-type-info">Processed as: Handwritten Text (HTR + NER)</p>
         {% else %}
             <p class="text-type-info">
-                Обработано как: Печатный текст (OCR + NER)
+                Processed as: Machine Printed Text (OCR + NER)
                 {% if ocr_model == 'tesseract' %}
                     - Tesseract 5 (LSTM)
                 {% else %}
@@ -20,7 +20,7 @@
             </p>
         {% endif %}
         {% if translate %}
-            <p class="text-type-info">Перевод с дореволюционного русского: применен</p>
+            <p class="text-type-info">Translation from pre-revolutionary Russian: Applied</p>
         {% endif %}
     </div>
 
@@ -30,7 +30,7 @@
         </div>
 
         <div class="text-container">
-            <h3>Извлеченный текст с NER-тегами:</h3>
+            <h3>Extracted text with NER tags:</h3>
             <div class="extracted-text">
                 {{ extracted_text|safe }}
             </div>
@@ -38,7 +38,7 @@
 
         {% if relations %}
         <div class="relations-container">
-            <h3>Извлеченные связи:</h3>
+            <h3>Extracted Relationships:</h3>
             <div class="relations-list">
                 {% for relation in relations %}
                 <div class="relation-item">
@@ -55,23 +55,23 @@
 {% endif %}
 
 <div class="legend">
-    <h3>Легенда NER-тегов:</h3>
+    <h3>NER Tags Legend:</h3>
     <ul>
         <li>
             <span class="legend-mark ner-per"></span>
-            <span>PER - Персона</span>
+            <span>PER - Person</span>
         </li>
         <li>
             <span class="legend-mark ner-loc"></span>
-            <span>LOC - Местоположение</span>
+            <span>LOC - Location</span>
         </li>
         <li>
             <span class="legend-mark ner-org"></span>
-            <span>ORG - Организация</span>
+            <span>ORG - Organization</span>
         </li>
         <li>
             <span class="legend-mark ner-date"></span>
-            <span>DATE - Дата</span>
+            <span>DATE - Date</span>
         </li>
     </ul>
 </div>
