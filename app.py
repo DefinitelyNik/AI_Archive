@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for
 from flasgger import Swagger
 from ocr import perform_ocr
+from tesseract_ocr import perform_tesseract_ocr
 from htr import perform_htr
 from ner import perform_ner, translate_text
 from relations import extract_relations
@@ -31,7 +32,6 @@ template = {
 
 swagger = Swagger(app, template=template)
 
-
 @app.route('/', methods=['GET', 'POST'])
 def index():
     """
@@ -54,6 +54,12 @@ def index():
         required: true
         description: Тип текста (машинный или рукописный)
       - in: formData
+        name: ocr_model
+        type: string
+        enum: [easyocr, tesseract]
+        required: false
+        description: Модель OCR (только для text_type=ocr)
+      - in: formData
         name: translate
         type: boolean
         required: false
@@ -68,6 +74,7 @@ def index():
 
         file = request.files['image']
         text_type = request.form['text_type']
+        ocr_model = request.form.get('ocr_model', 'easyocr')
         translate = 'translate' in request.form
 
         if file.filename == '':
@@ -78,7 +85,10 @@ def index():
             file.save(filepath)
 
             if text_type == 'ocr':
-                text = perform_ocr(filepath)
+                if ocr_model == 'tesseract':
+                    text = perform_tesseract_ocr(filepath)
+                else:  # easyocr (по умолчанию)
+                    text = perform_ocr(filepath)
             else:  # htr
                 _, text = perform_htr(filepath)
 
@@ -95,11 +105,11 @@ def index():
                         image_path=image_url,
                         extracted_text=annotated_text_html,
                         text_type=text_type,
+                        ocr_model=ocr_model,
                         translate=translate,
                         relations=relations))
 
     return render_template('index.html')
-
 
 @app.route('/results')
 def results():
@@ -127,6 +137,13 @@ def results():
         default: ocr
         description: Тип текста (OCR или HTR)
       - in: query
+        name: ocr_model
+        type: string
+        enum: [easyocr, tesseract]
+        required: false
+        default: easyocr
+        description: Использованная модель OCR
+      - in: query
         name: translate
         type: boolean
         required: false
@@ -144,6 +161,7 @@ def results():
     image_path = request.args.get('image_path')
     extracted_text = request.args.get('extracted_text')
     text_type = request.args.get('text_type', 'ocr')
+    ocr_model = request.args.get('ocr_model', 'easyocr')
     translate = request.args.get('translate', 'False') == 'True'
 
     relations_str = request.args.get('relations', '[]')
@@ -159,9 +177,9 @@ def results():
                            image_path=image_path,
                            extracted_text=extracted_text,
                            text_type=text_type,
+                           ocr_model=ocr_model,
                            translate=translate,
                            relations=relations)
-
 
 @app.route('/ner_check', methods=['GET', 'POST'])
 def ner_check():
@@ -202,7 +220,6 @@ def ner_check():
                            relations=relations,
                            translate=translate)
 
-
 @app.route('/api/process', methods=['POST'])
 def api_process():
     """
@@ -225,6 +242,12 @@ def api_process():
         required: true
         description: Тип текста (машинный или рукописный)
       - in: formData
+        name: ocr_model
+        type: string
+        enum: [easyocr, tesseract]
+        required: false
+        description: Модель OCR (только для text_type=ocr)
+      - in: formData
         name: translate
         type: boolean
         required: false
@@ -245,7 +268,7 @@ def api_process():
               type: array
               items:
                 type: array
-                description: Список кортежей (сущность1, отношение, сущность2)
+              description: Список кортежей (сущность1, отношение, сущность2)
       400:
         description: Ошибка ввода
     """
@@ -254,6 +277,7 @@ def api_process():
 
     file = request.files['image']
     text_type = request.form['text_type']
+    ocr_model = request.form.get('ocr_model', 'easyocr')
     translate = 'translate' in request.form
 
     if file.filename == '':
@@ -266,7 +290,10 @@ def api_process():
     file.save(filepath)
 
     if text_type == 'ocr':
-        text = perform_ocr(filepath)
+        if ocr_model == 'tesseract':
+            text = perform_tesseract_ocr(filepath)
+        else:  # easyocr (по умолчанию)
+            text = perform_ocr(filepath)
     else:
         _, text = perform_htr(filepath)
 
@@ -281,7 +308,6 @@ def api_process():
         'annotated_text': annotated_text,
         'relations': relations
     }
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

@@ -10,3 +10,5 @@ transformers
 pytest
 pytest-mock
 flasgger
+pytesseract
+Pillow

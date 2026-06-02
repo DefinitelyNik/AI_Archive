@@ -1,35 +1,44 @@
 {% extends "base.html" %}
 
-{% block title %}OCR + NER Visualization - Results{% endblock %}
+{% block title %}AI Archive - Results{% endblock %}
 
 {% block content %}
 {% if image_path and extracted_text %}
 <div class="result-section">
     <div class="result-header">
-        <h2>Results</h2>
-        <p class="text-type-info">
-            {% if text_type == 'htr' %}
-                Processed as: Handwritten Text (HTR + NER)
-            {% else %}
-                Processed as: Machine Printed Text (OCR + NER)
-            {% endif %}
-            {% if translate %}
-                | Translation applied
-            {% endif %}
-        </p>
+        <h2>Результаты обработки</h2>
+        {% if text_type == 'htr' %}
+            <p class="text-type-info">Обработано как: Рукописный текст (HTR + NER)</p>
+        {% else %}
+            <p class="text-type-info">
+                Обработано как: Печатный текст (OCR + NER)
+                {% if ocr_model == 'tesseract' %}
+                    - Tesseract 5 (LSTM)
+                {% else %}
+                    - EasyOCR
+                {% endif %}
+            </p>
+        {% endif %}
+        {% if translate %}
+            <p class="text-type-info">Перевод с дореволюционного русского: применен</p>
+        {% endif %}
     </div>
+
     <div class="result-content">
         <div class="image-container">
             <img src="{{ image_path }}" alt="Uploaded image" class="result-image">
         </div>
+
         <div class="text-container">
-            <h3>Extracted text with NER tags:</h3>
-            <div class="extracted-text">{{ extracted_text|safe }}</div>
+            <h3>Извлеченный текст с NER-тегами:</h3>
+            <div class="extracted-text">
+                {{ extracted_text|safe }}
+            </div>
         </div>
 
         {% if relations %}
         <div class="relations-container">
-            <h3>Extracted Relationships:</h3>
+            <h3>Извлеченные связи:</h3>
             <div class="relations-list">
                 {% for relation in relations %}
                 <div class="relation-item">
@@ -46,12 +55,24 @@
 {% endif %}
 
 <div class="legend">
-    <h3>NER Tags Legend:</h3>
+    <h3>Легенда NER-тегов:</h3>
     <ul>
-        <li><span class="legend-mark ner-per"></span> PER</li>
-        <li><span class="legend-mark ner-loc"></span> LOC</li>
-        <li><span class="legend-mark ner-org"></span> ORG</li>
-        <li><span class="legend-mark ner-date"></span> DATE</li>
+        <li>
+            <span class="legend-mark ner-per"></span>
+            <span>PER - Персона</span>
+        </li>
+        <li>
+            <span class="legend-mark ner-loc"></span>
+            <span>LOC - Местоположение</span>
+        </li>
+        <li>
+            <span class="legend-mark ner-org"></span>
+            <span>ORG - Организация</span>
+        </li>
+        <li>
+            <span class="legend-mark ner-date"></span>
+            <span>DATE - Дата</span>
+        </li>
     </ul>
 </div>
 {% endblock %}

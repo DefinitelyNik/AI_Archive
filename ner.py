@@ -42,7 +42,7 @@ def translate_text(text: str) -> str:
     for old, new in replacements.items():
         text = text.replace(old, new)
 
-    text = re.sub(r'ъ(\s|[.,;:!?—–\n\"\'\)\]])', r'\1', text)
+    text = re.sub(r'ъ(\s|[.,;:!?—–\n\"\')\]])', r'\1', text)
     text = re.sub(r'(\s|[.,;:!?—–\n\"\'(\[])ъ', r'\1', text)
 
     text = text.replace('ъ', '')
