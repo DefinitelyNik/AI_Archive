@@ -30,7 +30,8 @@ TOP_P = 0.9
 REPETITION_PENALTY = 1.1
 
 # Prompt template for relation extraction
-RELATION_PROMPT = """Ты — система извлечения семантических отношений из текста на русском языке.
+RELATION_PROMPT = """
+Ты — система извлечения семантических отношений из текста на русском языке.
 Проанализируй текст и извлеки ВСЕ отношения между сущностями.
 
 Типы отношений для поиска:
@@ -58,12 +59,25 @@ RELATION_PROMPT = """Ты — система извлечения семанти
 - Не добавляй пояснений, только список
 
 Пример 1:
-Текст: "Иван Петрович родился 15 марта 1890 года в Москве. Его отец Пётр Сергеевич, а мать Анна Михайловна. Крестила его Мария Сидорова в церкви села Коломенское."
-Ответ: [('Иван Петрович', 'дата рождения', '15 марта 1890 года'), ('Иван Петрович', 'место рождения', 'Москва'), ('Пётр Сергеевич', 'родитель', 'Иван Петрович'), ('Анна Михайловна', 'родитель', 'Иван Петрович'), ('Мария Сидорова', 'крестил', 'Иван Петрович'), ('Иван Петрович', 'место крещения', 'церковь села Коломенское')]
+Текст: "Иван Петрович родился 15 марта 1890 года в Москве.
+Его отец Пётр Сергеевич, а мать Анна Михайловна.
+Крестила его Мария Сидорова в церкви села Коломенское."
+Ответ: [('Иван Петрович', 'дата рождения', '15 марта 1890 года'),
+('Иван Петрович', 'место рождения', 'Москва'),
+('Пётр Сергеевич', 'родитель', 'Иван Петрович'),
+('Анна Михайловна', 'родитель', 'Иван Петрович'),
+('Мария Сидорова', 'крестил', 'Иван Петрович'),
+('Иван Петрович', 'место крещения', 'церковь села Коломенское')]
 
 Пример 2:
-Текст: "Князь Алексей Дмитриевич Щербаков, 1845 года рождения, скончался в Санкт-Петербурге в 1912 году. Его жена — Екатерина Васильевна."
-Ответ: [('Алексей Дмитриевич Щербаков', 'дата рождения', '1845'), ('Алексей Дмитриевич Щербаков', 'место смерти', 'Санкт-Петербург'), ('Алексей Дмитриевич Щербаков', 'дата смерти', '1912'), ('Екатерина Васильевна', 'супруг', 'Алексей Дмитриевич Щербаков')]
+Текст: "Князь Алексей Дмитриевич Щербаков,
+1845 года рождения,
+скончался в Санкт-Петербурге в 1912 году.
+Его жена — Екатерина Васильевна."
+Ответ: [('Алексей Дмитриевич Щербаков', 'дата рождения', '1845'),
+('Алексей Дмитриевич Щербаков', 'место смерти', 'Санкт-Петербург'),
+('Алексей Дмитриевич Щербаков', 'дата смерти', '1912'),
+('Екатерина Васильевна', 'супруг', 'Алексей Дмитриевич Щербаков')]
 
 Текст для анализа:
 {text}
@@ -84,7 +98,8 @@ def _load_model():
 
     logger.info(f"Loading relation extraction model: {MODEL_NAME}...")
     logger.debug(f"Device: {'GPU' if torch.cuda.is_available() else 'CPU'}")
-    logger.debug(f"Torch dtype: {'float16' if torch.cuda.is_available() else 'float32'}")
+    logger.debug(f"Torch dtype: "
+                 f"{'float16' if torch.cuda.is_available() else 'float32'}")
 
     device = 0 if torch.cuda.is_available() else -1
     torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
@@ -111,7 +126,8 @@ def _load_model():
         device=device,
     )
 
-    logger.info(f"Model loaded successfully on {'GPU' if torch.cuda.is_available() else 'CPU'}")
+    logger.info(f"Model loaded successfully on "
+                f"{'GPU' if torch.cuda.is_available() else 'CPU'}")
     logger.debug(f"Generator pipeline created with device={device}")
 
 
@@ -151,7 +167,8 @@ def _parse_llm_response(response: str) -> list:
                         entity2 = str(rel[2]).strip()
                         if entity1 and relation_type and entity2:
                             valid_relations.append((entity1, relation_type, entity2))
-                            logger.debug(f"Extracted relation: ({entity1}, {relation_type}, {entity2})")
+                            logger.debug(f"Extracted relation: "
+                                         f"({entity1}, {relation_type}, {entity2})")
                         else:
                             logger.warning(f"Skipped empty relation: {rel}")
                     else:
@@ -164,7 +181,8 @@ def _parse_llm_response(response: str) -> list:
 
     # Fallback: try to extract tuples using regex
     logger.debug("Trying regex fallback for tuple extraction")
-    tuple_pattern = r'\(\s*["\'](.+?)["\']\s*,\s*["\'](.+?)["\']\s*,\s*["\'](.+?)["\']\s*\)'
+    tuple_pattern = (r'\(\s*["\'](.+?)["\']\s*,'
+                     r'\s*["\'](.+?)["\']\s*,\s*["\'](.+?)["\']\s*\)')
     matches = re.findall(tuple_pattern, response)
     if matches:
         result = [(m[0].strip(), m[1].strip(), m[2].strip()) for m in matches]
@@ -199,7 +217,8 @@ def extract_relations(text: str) -> list:
 
     # Skip very short texts that are unlikely to contain relations
     if len(text.strip()) < 10:
-        logger.debug(f"Text too short ({len(text.strip())} chars), returning empty list")
+        logger.debug(f"Text too short "
+                     f"({len(text.strip())} chars), returning empty list")
         return []
 
     logger.info(f"Starting relation extraction for text (length: {len(text)} chars)")
@@ -212,7 +231,9 @@ def extract_relations(text: str) -> list:
         logger.debug(f"Prompt prepared (length: {len(prompt)} chars)")
 
         messages = [
-            {"role": "system", "content": "Ты — система извлечения отношений из текста. Отвечай только списком кортежей."},
+            {"role": "system",
+             "content": "Ты — система извлечения отношений из текста. "
+                        "Отвечай только списком кортежей."},
             {"role": "user", "content": prompt},
         ]
 

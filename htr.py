@@ -37,8 +37,8 @@ def group_by_lines(detection_results: list, y_tolerance: int = 10) -> list:
         elif abs(y_center - current_line_y_center) <= y_tolerance:
             current_line.append((bbox, text, prob))
             centers = [
-                (min([pt[1] for pt in b]) + max([pt[1] for pt in b]))
-                / 2 for b, t, p in current_line]
+                (min([pt[1] for pt in b]) + max([pt[1] for pt in b])) / 2
+                for b, t, p in current_line]
             current_line_y_center = statistics.mean(centers)
         else:
             if current_line:

@@ -18,3 +18,4 @@ exclude =
 
 statistics = True
 count = True
+ignore = E128

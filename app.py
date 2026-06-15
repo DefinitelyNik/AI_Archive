@@ -5,7 +5,6 @@ from tesseract_ocr import perform_tesseract_ocr
 from htr import perform_htr
 from ner import perform_ner, translate_text
 from relations import extract_relations
-import ast
 import json
 import os
 

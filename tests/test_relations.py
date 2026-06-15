@@ -1,6 +1,6 @@
 """Tests for the relations extraction module."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from relations import extract_relations, _parse_llm_response
 
 
@@ -9,7 +9,8 @@ class TestParseLlmResponse:
 
     def test_parse_valid_list(self):
         """Test parsing a valid Python list response."""
-        response = "[('Иван', 'место рождения', 'Москва'), ('Пётр', 'родитель', 'Иван')]"
+        response = ("[('Иван', 'место рождения', 'Москва'), "
+                    "('Пётр', 'родитель', 'Иван')]")
         result = _parse_llm_response(response)
         assert len(result) == 2
         assert result[0] == ('Иван', 'место рождения', 'Москва')
@@ -23,7 +24,9 @@ class TestParseLlmResponse:
 
     def test_parse_with_extra_text(self):
         """Test parsing when LLM adds explanation text."""
-        response = "Вот извлечённые отношения:\n[('Иван', 'место рождения', 'Москва')]\nБольше ничего не нашёл."
+        response = ("Вот извлечённые отношения:"
+                    "\n[('Иван', 'место рождения', 'Москва')]"
+                    "\nБольше ничего не нашёл.")
         result = _parse_llm_response(response)
         assert len(result) == 1
         assert result[0] == ('Иван', 'место рождения', 'Москва')
@@ -95,7 +98,10 @@ class TestExtractRelations:
     @patch('relations._load_model')
     @patch('relations._generator')
     @patch('relations._tokenizer')
-    def test_extract_relations_error_handling(self, mock_tokenizer, mock_generator, mock_load):
+    def test_extract_relations_error_handling(self,
+                                              mock_tokenizer,
+                                              mock_generator,
+                                              mock_load):
         """Test that errors are handled gracefully."""
         mock_tokenizer.eos_token_id = 0
         mock_tokenizer.apply_chat_template.side_effect = Exception("Model error")
