@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, session
 from flasgger import Swagger
 from ocr import perform_ocr
 from tesseract_ocr import perform_tesseract_ocr
@@ -6,9 +6,11 @@ from htr import perform_htr
 from ner import perform_ner, translate_text
 from relations import extract_relations
 import ast
+import json
 import os
 
 app = Flask(__name__)
+app.secret_key = os.urandom(24)  # обязательно для session
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 UPLOAD_FOLDER = 'static/uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -88,9 +90,9 @@ def index():
             if text_type == 'ocr':
                 if ocr_model == 'tesseract':
                     text = perform_tesseract_ocr(filepath)
-                else:  # easyocr (по умолчанию)
+                else:
                     text = perform_ocr(filepath)
-            else:  # htr
+            else:
                 _, text = perform_htr(filepath)
 
             if translate:
@@ -98,6 +100,11 @@ def index():
 
             annotated_text_html = perform_ner(text)
             relations = extract_relations(text)
+            relations_json = json.dumps(relations, ensure_ascii=False, indent=2)
+
+            # Сохраняем relations в session вместо URL
+            session['relations'] = relations
+            session['relations_json'] = relations_json
 
             image_url = url_for('static', filename=f'uploads/{file.filename}')
 
@@ -107,8 +114,7 @@ def index():
                         extracted_text=annotated_text_html,
                         text_type=text_type,
                         ocr_model=ocr_model,
-                        translate=translate,
-                        relations=relations))
+                        translate=translate))
 
     return render_template('index.html')
 
@@ -166,11 +172,8 @@ def results():
     ocr_model = request.args.get('ocr_model', 'easyocr')
     translate = request.args.get('translate', 'False') == 'True'
 
-    relations_str = request.args.get('relations', '[]')
-    try:
-        relations = ast.literal_eval(relations_str)
-    except (ValueError, SyntaxError):
-        relations = []
+    relations = session.get('relations', [])
+    relations_json = session.get('relations_json', '[]')
 
     if not image_path or not extracted_text:
         return redirect(url_for('index'))
@@ -181,7 +184,8 @@ def results():
                            text_type=text_type,
                            ocr_model=ocr_model,
                            translate=translate,
-                           relations=relations)
+                           relations=relations,
+                           relations_json=relations_json)
 
 
 @app.route('/ner_check', methods=['GET', 'POST'])
@@ -208,7 +212,9 @@ def ner_check():
     """
     extracted_text = None
     relations = []
+    relations_json = '[]'
     translate = False
+
     if request.method == 'POST':
         text = request.form.get('text', '')
         translate = 'translate' in request.form
@@ -217,10 +223,12 @@ def ner_check():
                 text = translate_text(text)
             extracted_text = perform_ner(text)
             relations = extract_relations(text)
+            relations_json = json.dumps(relations, ensure_ascii=False, indent=2)
 
     return render_template('ner_check.html',
                            extracted_text=extracted_text,
                            relations=relations,
+                           relations_json=relations_json,
                            translate=translate)
 
 

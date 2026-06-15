@@ -13,3 +13,6 @@ flasgger
 pytesseract
 Pillow
 flake8
+accelerate
+sentencepiece
+protobuf

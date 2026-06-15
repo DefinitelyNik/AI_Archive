@@ -23,33 +23,13 @@
     </form>
 </div>
 
-{% if extracted_text %}
-<div class="result-section">
-    <div class="result-header">
-        <h2>NER Analysis Results</h2>
-    </div>
-    <div class="result-content">
-        <div class="text-container">
-            <h3>Analyzed text with NER tags:</h3>
-            <div class="extracted-text">{{ extracted_text|safe }}</div>
-        </div>
-
-        {% if relations %}
-        <div class="relations-container">
-            <h3>Extracted Relationships:</h3>
-            <div class="relations-list">
-                {% for relation in relations %}
-                <div class="relation-item">
-                    <span class="entity1">{{ relation[0] }}</span>
-                    <span class="relation-type">{{ relation[1] }}</span>
-                    <span class="entity2">{{ relation[2] }}</span>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-    </div>
+{% if relations %}
+<div class="relations-container">
+    <h3>Извлечённые связи ({{ relations|length }} шт.):</h3>
+    <pre class="relations-json">{{ relations_json }}</pre>
 </div>
+{% else %}
+<p class="no-relations">Связи не найдены</p>
 {% endif %}
 
 <div class="legend">
