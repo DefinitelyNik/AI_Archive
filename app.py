@@ -5,14 +5,25 @@ from tesseract_ocr import perform_tesseract_ocr
 from htr import perform_htr
 from ner import perform_ner, translate_text
 from relations import extract_relations
+from text_cleanup import clean_text
 import ast
 import os
+import uuid
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 UPLOAD_FOLDER = 'static/uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+
+def save_upload(file):
+    _, extension = os.path.splitext(file.filename)
+    filename = f"{uuid.uuid4().hex}{extension.lower()}"
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(filepath)
+    return filename, filepath
+
 
 # Настройка Flasgger
 template = {
@@ -77,13 +88,13 @@ def index():
         text_type = request.form['text_type']
         ocr_model = request.form.get('ocr_model', 'easyocr')
         translate = 'translate' in request.form
+        cleanup_enabled = 'clean_text' in request.form
 
         if file.filename == '':
             return redirect(request.url)
 
         if file and text_type in ['ocr', 'htr']:
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            file.save(filepath)
+            filename, filepath = save_upload(file)
 
             if text_type == 'ocr':
                 if ocr_model == 'tesseract':
@@ -96,19 +107,24 @@ def index():
             if translate:
                 text = translate_text(text)
 
-            annotated_text_html = perform_ner(text)
-            relations = extract_relations(text)
+            raw_text = text
+            processed_text = clean_text(text) if cleanup_enabled else text
 
-            image_url = url_for('static', filename=f'uploads/{file.filename}')
+            annotated_text_html = perform_ner(processed_text)
+            relations = extract_relations(processed_text)
 
-            return redirect(
-                url_for('results',
-                        image_path=image_url,
-                        extracted_text=annotated_text_html,
-                        text_type=text_type,
-                        ocr_model=ocr_model,
-                        translate=translate,
-                        relations=relations))
+            image_url = url_for('static', filename=f'uploads/{filename}')
+
+            return render_template('results.html',
+                                   image_path=image_url,
+                                   extracted_text=annotated_text_html,
+                                   text_type=text_type,
+                                   ocr_model=ocr_model,
+                                   translate=translate,
+                                   cleanup_enabled=cleanup_enabled,
+                                   raw_text=raw_text,
+                                   cleaned_text=processed_text,
+                                   relations=relations)
 
     return render_template('index.html')
 
@@ -165,6 +181,9 @@ def results():
     text_type = request.args.get('text_type', 'ocr')
     ocr_model = request.args.get('ocr_model', 'easyocr')
     translate = request.args.get('translate', 'False') == 'True'
+    cleanup_enabled = request.args.get('cleanup_enabled', 'False') == 'True'
+    raw_text = request.args.get('raw_text')
+    cleaned_text = request.args.get('cleaned_text')
 
     relations_str = request.args.get('relations', '[]')
     try:
@@ -181,6 +200,9 @@ def results():
                            text_type=text_type,
                            ocr_model=ocr_model,
                            translate=translate,
+                           cleanup_enabled=cleanup_enabled,
+                           raw_text=raw_text,
+                           cleaned_text=cleaned_text,
                            relations=relations)
 
 
@@ -283,6 +305,7 @@ def api_process():
     text_type = request.form['text_type']
     ocr_model = request.form.get('ocr_model', 'easyocr')
     translate = 'translate' in request.form
+    cleanup_enabled = 'clean_text' in request.form
 
     if file.filename == '':
         return {'error': 'No file selected'}, 400
@@ -290,8 +313,7 @@ def api_process():
     if text_type not in ['ocr', 'htr']:
         return {'error': 'Invalid text_type'}, 400
 
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-    file.save(filepath)
+    _, filepath = save_upload(file)
 
     if text_type == 'ocr':
         if ocr_model == 'tesseract':
@@ -304,14 +326,36 @@ def api_process():
     if translate:
         text = translate_text(text)
 
-    annotated_text = perform_ner(text)
-    relations = extract_relations(text)
+    raw_text = text
+    processed_text = clean_text(text) if cleanup_enabled else text
 
-    return {
-        'text': text,
+    annotated_text = perform_ner(processed_text)
+    relations = extract_relations(processed_text)
+
+    response = {
+        'text': processed_text,
         'annotated_text': annotated_text,
         'relations': relations
     }
+
+    if cleanup_enabled:
+        response['raw_text'] = raw_text
+
+    return response
+
+
+@app.route('/api/clean-text', methods=['POST'])
+def api_clean_text():
+    payload = request.get_json(silent=True) or {}
+    if not isinstance(payload, dict):
+        return {'error': 'JSON object is required'}, 400
+
+    text = payload.get('text', '')
+
+    if not text or not text.strip():
+        return {'error': 'Text is required'}, 400
+
+    return {'cleaned_text': clean_text(text)}
 
 
 if __name__ == '__main__':

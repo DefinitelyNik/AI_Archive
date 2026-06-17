@@ -7,6 +7,9 @@ torch
 opencv-python
 numpy
 transformers
+accelerate
+sentencepiece
+protobuf
 pytest
 pytest-mock
 flasgger

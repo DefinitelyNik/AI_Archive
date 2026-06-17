@@ -71,7 +71,7 @@ def test_index_post_with_image_ocr(mock_ocr, client):
         )
 
     mock_ocr.assert_called_once()
-    assert response.status_code == 302  # Редирект на /results
+    assert response.status_code == 200
 
 
 @patch("app.perform_htr", return_value=([], "mock htr text"))
@@ -88,7 +88,7 @@ def test_index_post_with_image_htr(mock_htr, client):
         )
 
     mock_htr.assert_called_once()
-    assert response.status_code == 302  # Редирект на /results
+    assert response.status_code == 200
 
 
 @patch("app.perform_ocr", return_value="mock ocr text")
@@ -106,4 +106,4 @@ def test_index_post_with_translate(mock_ocr, client):
         )
 
     mock_ocr.assert_called_once()
-    assert response.status_code == 302  # Редирект на /results
+    assert response.status_code == 200
