@@ -52,6 +52,15 @@
 </div>
 {% endif %}
 
+{% if relations %}
+<div class="relations-container">
+    <h3>Извлечённые связи ({{ relations|length }} шт.):</h3>
+    <pre class="relations-json">{{ relations_json }}</pre>
+</div>
+{% else %}
+<p class="no-relations">Связи не найдены</p>
+{% endif %}
+
 <div class="legend">
     <h3>NER Tags Legend:</h3>
     <ul>

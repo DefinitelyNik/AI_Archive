@@ -1,16 +1,100 @@
-# 📝 AI Archive app
-[![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/downloads/)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+# AI Archive
 
----
+AI Archive is a Flask web application for working with archival images and text. It combines OCR, HTR, NER, date detection, and relation extraction to help turn scanned material into structured, searchable data.
 
-## 🗒️ Description
+## Features
 
-This Flask web application processes images to extract text in Russian using OCR and HTR and identifies named entities (NER) such as persons, locations, organizations, and dates. Extracted text and ner-tags would be used to create graph database with people and connections between them.
+- OCR for printed text with EasyOCR or Tesseract.
+- HTR for handwritten text with TrOCR.
+- Named entity recognition for persons, locations, organizations, and dates.
+- Date detection with regular expressions.
+- Relation extraction pipeline for archival text.
+- Swagger API documentation.
+- Docker support and GitHub Actions CI.
 
----
+## Technology Stack
 
-## 🚀 Features
+- Python 3.10+
+- Flask
+- EasyOCR
+- Tesseract OCR
+- Transformers
+- Slovnet and Navec
+- Pytest
+- Flake8
+- Docker
+- GitHub Actions
+
+## Repository Structure
+
+```text
+app.py                    Flask routes and API endpoints
+ocr.py                    EasyOCR integration
+tesseract_ocr.py          Tesseract OCR integration
+htr.py                    Handwritten text recognition
+ner.py                    Named entity recognition
+relations.py              Relation extraction
+text_cleanup.py           LLM cleanup feature branch module
+templates/                HTML templates
+static/                   Static files and uploads
+tests/                    Unit tests and fixtures
+Dockerfile                Docker image definition
+.github/workflows/ci.yml  CI pipeline
+```
+
+## Project Documentation
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [API Documentation](docs/API.md)
+- [Testing and Quality](docs/TESTING.md)
+
+## Local Run
+
+1. Clone the repository.
+2. Create and activate a virtual environment.
+3. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+4. Run the app:
+
+```bash
+python app.py
+```
+
+5. Open:
+
+```text
+http://127.0.0.1:5000
+```
+
+Swagger is available at:
+
+```text
+http://127.0.0.1:5000/apidocs
+```
+
+## Docker
+
+Build the image:
+
+```bash
+docker build -t ai-archive .
+```
+
+Run the container:
+
+```bash
+docker run --rm -p 5000:5000 ai-archive
+```
+
+Open:
+
+```text
+http://127.0.0.1:5000
+```
 
 - **OCR Processing**: Extract text from uploaded images using EasyOCR.
 - **HTR Processing**(soon): Extract text from uploaded images using trocr-base-handwritten-ru.
@@ -19,37 +103,38 @@ This Flask web application processes images to extract text in Russian using OCR
 - **Visual Highlighting**: Entities are highlighted with distinct colors.
 - **LLM Text Cleanup**: Optionally clean OCR/HTR output with a local Qwen model before NER and relation extraction.
 
----
+### POST /api/process
 
-## 🛠️ Technologies Used
+Processes an uploaded image and returns extracted text, annotated text, and relations.
 
-- **Backend**: Flask
-- **OCR**: EasyOCR
-- **NER**: Slovnet, Navec
-- **Frontend**: HTML, CSS, JavaScript
-- **Models**: `EasyOCR`, `kazars24/trocr-base-handwritten-ru`, `slovnet_ner`
+Form fields:
 
----
+- `image`: image file.
+- `text_type`: `ocr` or `htr`.
+- `ocr_model`: optional, `easyocr` or `tesseract`.
+- `translate`: optional.
 
-## 🎌 Supported languages
+Example:
 
-- **Russian**
-- **English** - coming soon
-
----
-
-## 📦 Installation
-
-### Prerequisites
-
-- Python 3.8 or higher
-- pip package manager
-
-### Setup
-Install using `pip`:
 ```bash
-pip install git+https://github.com/DefinitelyNik/AI_Archive.git
-pip install -r requirements.txt
+curl -X POST http://127.0.0.1:5000/api/process \
+  -F "image=@sample.jpg" \
+  -F "text_type=ocr" \
+  -F "ocr_model=easyocr"
+```
+
+## Tests and Quality
+
+Run tests:
+
+```bash
+pytest tests/
+```
+
+Run linting:
+
+```bash
+flake8 .
 ```
 
 ## 📞 Support
