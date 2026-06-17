@@ -36,19 +36,21 @@
             </div>
         </div>
 
+        <!-- ОТЛАДКА: -->
+<!--        <h3>Отладка:</h3>-->
+<!--        <p>relations тип: {{ relations.__class__.__name__ if relations else 'None' }}</p>-->
+<!--        <p>relations длина: {{ relations|length if relations else 0 }}</p>-->
+<!--        <p>relations_json существует: {{ 'да' if relations_json else 'нет' }}</p>-->
+<!--        <pre>{{ relations_json }}</pre>-->
+        <!-- КОНЕЦ ОТЛАДКИ -->
+
         {% if relations %}
         <div class="relations-container">
-            <h3>Extracted Relationships:</h3>
-            <div class="relations-list">
-                {% for relation in relations %}
-                <div class="relation-item">
-                    <span class="entity1">{{ relation[0] }}</span>
-                    <span class="relation-type">{{ relation[1] }}</span>
-                    <span class="entity2">{{ relation[2] }}</span>
-                </div>
-                {% endfor %}
-            </div>
+            <h3>Извлечённые связи ({{ relations|length }} шт.):</h3>
+            <pre class="relations-json">{{ relations_json }}</pre>
         </div>
+        {% else %}
+        <p class="no-relations">Связи не найдены</p>
         {% endif %}
     </div>
 </div>
