@@ -22,6 +22,9 @@
         {% if translate %}
             <p class="text-type-info">Translation from pre-revolutionary Russian: Applied</p>
         {% endif %}
+        {% if cleanup_enabled %}
+            <p class="text-type-info">LLM text cleanup: Applied</p>
+        {% endif %}
     </div>
 
     <div class="result-content">
@@ -29,8 +32,30 @@
             <img src="{{ image_path }}" alt="Uploaded image" class="result-image">
         </div>
 
+        {% if cleanup_enabled and raw_text %}
+            <div class="text-container">
+                <h3>Raw extracted text:</h3>
+                <div class="extracted-text">
+                    {{ raw_text }}
+                </div>
+            </div>
+
+            <div class="text-container">
+                <h3>Cleaned text:</h3>
+                <div class="extracted-text">
+                    {{ cleaned_text }}
+                </div>
+            </div>
+        {% endif %}
+
         <div class="text-container">
-            <h3>Extracted text with NER tags:</h3>
+            <h3>
+                {% if cleanup_enabled %}
+                    Cleaned text with NER tags:
+                {% else %}
+                    Extracted text with NER tags:
+                {% endif %}
+            </h3>
             <div class="extracted-text">
                 {{ extracted_text|safe }}
             </div>

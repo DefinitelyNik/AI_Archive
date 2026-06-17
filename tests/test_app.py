@@ -1,145 +1,109 @@
-"""Tests for the Flask application."""
-
-import io
-import pytest
-from unittest.mock import MagicMock
-from app import app
+from unittest.mock import patch
 
 
-@pytest.fixture
-def client():
-    """Create a test client for the Flask app."""
-    app.config['TESTING'] = True
-    app.config['SECRET_KEY'] = 'test-secret-key'
-    with app.test_client() as client:
-        yield client
+def test_index_get(client):
+    """Тест GET запроса к главной странице"""
+    response = client.get('/')
+    assert response.status_code == 200
+    assert b'Upload an image' in response.data
 
 
-@pytest.fixture
-def mock_heavy_functions(monkeypatch):
-    """Mock all heavy functions to avoid loading real models."""
-    monkeypatch.setattr('app.perform_ner',
-                        MagicMock(return_value="mock ner result"))
-    monkeypatch.setattr('app.perform_ocr',
-                        MagicMock(return_value="mock ocr text"))
-    monkeypatch.setattr('app.perform_tesseract_ocr',
-                        MagicMock(return_value="mock tesseract text"))
-    monkeypatch.setattr('app.perform_htr',
-                        MagicMock(return_value=("mock_image", "mock htr text")))
-    monkeypatch.setattr('app.translate_text',
-                        MagicMock(side_effect=lambda x: f"translated: {x}"))
-    monkeypatch.setattr('app.extract_relations',
-                        MagicMock(return_value=[
-                            ('Entity1', 'relation_type', 'Entity2')]))
+def test_ner_check_get(client):
+    """Тест GET запроса к странице NER Check"""
+    response = client.get('/ner_check')
+    assert response.status_code == 200
+    assert b'Enter text to analyze' in response.data
 
 
-class TestIndexRoute:
-    """Tests for the index route."""
-
-    def test_index_get(self, client):
-        """Test GET request to index page."""
-        response = client.get('/')
-        assert response.status_code == 200
-        assert b'AI Archive' in response.data
-
-    @pytest.mark.parametrize("text_type,ocr_model", [
-        ('ocr', 'easyocr'),
-        ('ocr', 'tesseract'),
-        ('htr', 'easyocr'),
-    ])
-    def test_index_post_missing_image(self, client, text_type, ocr_model):
-        """Test POST request without image file - should redirect."""
-        response = client.post('/', data={
-            'text_type': text_type,
-            'ocr_model': ocr_model
-        })
-
-        assert response.status_code == 302
-
-    def test_index_post_with_image(self, client, mock_heavy_functions):
-        """Test POST request with valid image file."""
-        data = {
-            'image': (io.BytesIO(b"fake image data"), 'test.jpg'),
-            'text_type': 'ocr',
-            'ocr_model': 'easyocr'
-        }
-        response = client.post('/', data=data, content_type='multipart/form-data')
-
-        assert response.status_code == 302
-        assert '/results' in response.headers['Location']
+def test_results_get_without_params(client):
+    """Тест GET запроса к /results без параметров"""
+    response = client.get('/results')
+    assert response.status_code == 302  # Редирект на /
 
 
-class TestNerCheckRoute:
-    """Tests for the NER check route."""
-
-    def test_ner_check_get(self, client):
-        """Test GET request to NER check page."""
-        response = client.get('/ner_check')
-        assert response.status_code == 200
-        assert b'NER' in response.data or b'ner' in response.data
-
-    def test_ner_check_post_empty_text(self, client, mock_heavy_functions):
-        """Test POST request with empty text."""
-        response = client.post('/ner_check', data={'text': ''})
-        assert response.status_code == 200
-
-    def test_ner_check_post_with_text(self, client, mock_heavy_functions):
-        """Test POST request to NER Check with text."""
-        response = client.post('/ner_check', data={'text': 'Привет мир'})
-
-        assert response.status_code == 200
-        assert b'mock ner result' in response.data
-
-    def test_ner_check_post_with_translate(self, client, mock_heavy_functions):
-        """Test POST request with translation enabled."""
-        response = client.post('/ner_check', data={
-            'text': 'Привет мир',
-            'translate': 'on'
-        })
-        assert response.status_code == 200
-        assert b'mock ner result' in response.data
+def test_index_post_no_file(client):
+    """Тест POST запроса к главной странице без файла"""
+    response = client.post('/', data={'text_type': 'ocr'})
+    assert response.status_code == 302  # Редирект на /
 
 
-class TestResultsRoute:
-    """Tests for the results route."""
-
-    def test_results_without_params(self, client):
-        """Test results page without required parameters."""
-        response = client.get('/results')
-        assert response.status_code == 302  # Should redirect to index
-
-    def test_results_with_params(self, client, mock_heavy_functions):
-        """Test results page with all required parameters."""
-        response = client.get('/results', query_string={
-            'image_path': '/static/uploads/test.jpg',
-            'extracted_text': 'Test text',
-            'text_type': 'ocr',
-            'ocr_model': 'easyocr',
-            'translate': 'False'
-        })
-        assert response.status_code == 200
-        assert b'Test text' in response.data
+def test_index_post_invalid_file(client):
+    """Тест POST запроса с неправильным файлом"""
+    response = client.post(
+        '/',
+        data={
+            'image': (b'test', 'test.txt'),
+            'text_type': 'ocr'
+        },
+        content_type='multipart/form-data'
+    )
+    assert response.status_code == 302
 
 
-class TestSessionHandling:
-    """Tests for session-based relations storage."""
-
-    def test_relations_stored_in_session(self, client, mock_heavy_functions):
-        """Test that relations are stored in session after index POST."""
-        data = {
-            'image': (io.BytesIO(b"fake image data"), 'test.jpg'),
-            'text_type': 'ocr',
-            'ocr_model': 'easyocr'
-        }
-
-        response = client.post('/', data=data, content_type='multipart/form-data')
-
-        assert response.status_code == 302
-        assert '/results' in response.headers['Location']
-
-        response = client.get(response.headers['Location'])
-        assert response.status_code == 200
+def test_ner_check_post_empty_text(client):
+    """Тест POST запроса к NER Check с пустым текстом"""
+    response = client.post('/ner_check', data={'text': ''})
+    assert response.status_code == 200
+    assert b'NER Analysis Results' not in response.data
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+@patch("app.perform_ner", return_value="mock ner result")
+def test_ner_check_post_with_text(mock_ner, client):
+    """Тест POST запроса к NER Check с текстом"""
+    response = client.post('/ner_check', data={'text': 'Привет мир'})
+
+    mock_ner.assert_called_once()
+    assert response.status_code == 200
+    assert b'NER Analysis Results' in response.data
+
+
+@patch("app.perform_ocr", return_value="mock ocr text")
+def test_index_post_with_image_ocr(mock_ocr, client):
+    """Тест POST запроса с изображением и OCR"""
+    with open('tests/fixtures/test_image_ner.jpg', 'rb') as img:
+        response = client.post(
+            '/',
+            data={
+                'image': (img, 'test_image.jpg'),
+                'text_type': 'ocr'
+            },
+            content_type='multipart/form-data'
+        )
+
+    mock_ocr.assert_called_once()
+    assert response.status_code == 200
+
+
+@patch("app.perform_htr", return_value=([], "mock htr text"))
+def test_index_post_with_image_htr(mock_htr, client):
+    """Тест POST запроса с изображением и HTR"""
+    with open('tests/fixtures/test_image_htr.jpg', 'rb') as img:
+        response = client.post(
+            '/',
+            data={
+                'image': (img, 'test_image.jpg'),
+                'text_type': 'htr'
+            },
+            content_type='multipart/form-data'
+        )
+
+    mock_htr.assert_called_once()
+    assert response.status_code == 200
+
+
+@patch("app.perform_ocr", return_value="mock ocr text")
+def test_index_post_with_translate(mock_ocr, client):
+    """Тест POST запроса с флагом перевода"""
+    with open('tests/fixtures/test_image_ner.jpg', 'rb') as img:
+        response = client.post(
+            '/',
+            data={
+                'image': (img, 'test_image.jpg'),
+                'text_type': 'ocr',
+                'translate': '1'
+            },
+            content_type='multipart/form-data'
+        )
+
+    mock_ocr.assert_called_once()
+    assert response.status_code == 200

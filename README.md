@@ -96,7 +96,12 @@ Open:
 http://127.0.0.1:5000
 ```
 
-## API
+- **OCR Processing**: Extract text from uploaded images using EasyOCR.
+- **HTR Processing**(soon): Extract text from uploaded images using trocr-base-handwritten-ru.
+- **Named Entity Recognition (NER)**: Identify and classify entities (PER, LOC, ORG) using `slovnet` with `navec` embeddings.
+- **Date Recognition**: Detect dates in various formats using regular expressions.
+- **Visual Highlighting**: Entities are highlighted with distinct colors.
+- **LLM Text Cleanup**: Optionally clean OCR/HTR output with a local Qwen model before NER and relation extraction.
 
 ### POST /api/process
 
@@ -132,37 +137,34 @@ Run linting:
 flake8 .
 ```
 
-The repository CI runs tests and linting on pushes and pull requests to `master` or `main`.
+## 📞 Support
+For questions and support, please open an issue in the GitHub repository.
 
-## Continuous Integration and Docker Hub
+## LLM Text Cleanup
 
-The workflow in `.github/workflows/ci.yml` performs:
+The application can clean OCR/HTR output with the local
+`Qwen/Qwen2.5-3B-Instruct` model. Enable **Clean OCR/HTR text with LLM** in the
+upload form to show both the raw extracted text and the cleaned version. When
+cleanup is enabled, NER and relation extraction run on the cleaned text.
 
-- dependency installation;
-- unit tests with Pytest;
-- PEP8 style checks with Flake8;
-- Docker image build;
-- Docker image publishing to Docker Hub on pushes to the main branch.
+The model is loaded on the first cleanup request and can require significant
+RAM/VRAM and startup time, especially in Docker or CPU-only environments. If
+model loading or generation fails, the application keeps the original text so
+the main OCR/HTR pipeline remains usable.
 
-Docker Hub publishing requires these GitHub repository secrets:
+Clean already extracted text through the API:
 
-- `DOCKERHUB_USERNAME`
-- `DOCKERHUB_TOKEN`
+```bash
+curl -X POST http://localhost:5000/api/clean-text \
+  -H "Content-Type: application/json" \
+  -d "{\"text\":\"raw OCR text\"}"
+```
 
-## Development Workflow
+Image processing also supports the optional `clean_text` form field:
 
-- Work on separate feature branches.
-- Open pull requests into `master`.
-- Request code review before merging.
-- Wait for CI checks before merging.
-- Keep code style PEP8-compliant.
-
-## Course Notes
-
-This project satisfies the course workflow through separate branches, pull requests, code review, tests, linting, Docker configuration, and CI automation.
-
-## Feature Branch Notes
-
-Additional features are developed in separate branches before merge. For
-example, the LLM cleanup feature branch adds optional text cleanup and the
-`/api/clean-text` endpoint.
+```bash
+curl -X POST http://localhost:5000/api/process \
+  -F "image=@sample.jpg" \
+  -F "text_type=ocr" \
+  -F "clean_text=1"
+```
