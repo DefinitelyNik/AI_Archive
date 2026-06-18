@@ -57,15 +57,32 @@ For questions and support, please open an issue in the GitHub repository.
 
 ## LLM Text Cleanup
 
-The application can clean OCR/HTR output with the local
-`Qwen/Qwen2.5-3B-Instruct` model. Enable **Clean OCR/HTR text with LLM** in the
-upload form to show both the raw extracted text and the cleaned version. When
-cleanup is enabled, NER and relation extraction run on the cleaned text.
+The application can clean OCR/HTR output with a local Ollama model. Enable
+**Clean OCR/HTR text with LLM** in the upload form to show both the raw
+extracted text and the cleaned version. When cleanup is enabled, NER and
+relation extraction run on the cleaned text.
 
-The model is loaded on the first cleanup request and can require significant
-RAM/VRAM and startup time, especially in Docker or CPU-only environments. If
-model loading or generation fails, the application keeps the original text so
-the main OCR/HTR pipeline remains usable.
+By default cleanup uses `qwen3.5:9b` through the Ollama HTTP API at
+`http://localhost:11434`. Install Ollama, pull the model, and keep Ollama
+running while the Flask app is running:
+
+```bash
+ollama pull qwen3.5:9b
+ollama serve
+```
+
+The model requires several GB of disk space and can require significant
+RAM/VRAM at runtime. If Ollama is unavailable or generation fails, the
+application keeps the original text so the main OCR/HTR pipeline remains
+usable.
+
+Optional environment variables:
+
+```bash
+OLLAMA_MODEL=qwen3.5:9b
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_TIMEOUT=180
+```
 
 Clean already extracted text through the API:
 
