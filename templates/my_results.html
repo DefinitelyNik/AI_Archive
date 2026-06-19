@@ -3,70 +3,62 @@
 {% block title %}Мои результаты - AI Archive{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>📊 Мои результаты</h1>
-    <p>История всех обработанных вами документов</p>
-</div>
 
-{% if results %}
-<div class="results-grid">
-    {% for result in results %}
-    <div class="result-card" onclick="window.location.href='{{ url_for('view_result', result_id=result.id) }}'">
-        <div class="result-header">
-            <h3>{{ result.image_filename or 'Без имени' }}</h3>
-            <span class="status-badge status-{{ result.status }}">
+<div class="container">
+    <div class="page-header">
+        <h1>📊 Мои результаты</h1>
+        <p>История всех обработанных вами документов</p>
+    </div>
+
+    {% if results %}
+    <div class="results-grid">
+        {% for result in results %}
+        <div class="result-card{% if result.status == 'processing' %} result-card--processing{% endif %}">
+            <div class="result-card__header">
+                <h3 class="result-card__title" title="{{ result.image_filename or 'Без имени' }}">
+                    {{ result.image_filename or 'Без имени' }}
+                </h3>
                 {% if result.status == 'completed' %}
-                    ✓ Готово
+                <span class="status-badge status-success">✓ Готово</span>
                 {% elif result.status == 'processing' %}
-                    ⏳ Обработка
+                <span class="status-badge status-processing">⏳ В обработке</span>
                 {% else %}
-                    ✗ Ошибка
+                <span class="status-badge status-danger">✗ Ошибка</span>
                 {% endif %}
-            </span>
-        </div>
+            </div>
 
-        <div class="result-meta">
-            <p>
-                <strong>Дата:</strong>
-                {{ result.created_at.strftime('%d.%m.%Y %H:%M') }}
-            </p>
-            <p>
-                <strong>Тип:</strong>
-                {{ result.text_type|upper }}
-            </p>
-            <p>
-                <strong>Модель:</strong>
-                {{ result.ocr_model }}
-            </p>
-            {% if result.translated %}
-            <p>
-                <strong>Перевод:</strong>
-                <span class="text-success">✓ Выполнен</span>
-            </p>
-            {% endif %}
-        </div>
+            <div class="result-card__meta">
+                <span class="meta-item">📅 {{ result.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
+                <span class="meta-item">{{ result.text_type|upper }}</span>
+                <span class="meta-item">{{ result.ocr_model }}</span>
+                {% if result.translated %}
+                <span class="meta-item meta-item--accent">🌐 Перевод</span>
+                {% endif %}
+            </div>
 
-        <div class="result-actions">
             {% if result.status == 'completed' %}
+            <div class="result-card__actions">
                 <a href="{{ url_for('view_result', result_id=result.id) }}" class="btn btn-primary btn-sm">
                     👁️ Просмотреть
                 </a>
-            {% elif result.status == 'failed' %}
-                <p class="text-danger" style="font-size: 0.85rem;">
-                    {{ result.error_message[:100] }}{% if result.error_message|length > 100 %}...{% endif %}
-                </p>
+            </div>
+            {% elif result.status == 'failed' and result.error_message %}
+            <p class="result-card__error">
+                {{ result.error_message[:80] }}{% if result.error_message|length > 80 %}…{% endif %}
+            </p>
             {% endif %}
         </div>
+        {% endfor %}
     </div>
-    {% endfor %}
+    {% else %}
+    <div class="empty-state">
+        <h3>Пока нет результатов</h3>
+        <p>Загрузите первое изображение, чтобы начать работу</p>
+        <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
+            🚀 Начать обработку
+        </a>
+    </div>
+    {% endif %}
 </div>
-{% else %}
-<div class="no-results">
-    <h3>Пока нет результатов</h3>
-    <p>Загрузите первое изображение, чтобы начать работу</p>
-    <a href="{{ url_for('index') }}" class="btn btn-primary mt-2">
-        🚀 Начать обработку
-    </a>
-</div>
-{% endif %}
+
 {% endblock %}
