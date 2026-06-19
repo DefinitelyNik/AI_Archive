@@ -1,93 +1,78 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}AI Archive{% endblock %}</title>
-    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="app-container">
-        <header class="header">
-            <div class="header-content">
-                <div class="logo">
-                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo-img">
-                    <h1>AI Archive</h1>
-                </div>
-                <nav class="nav-tabs">
-                    <a href="{{ url_for('index') }}" class="nav-link">Home</a>
-                    <a href="{{ url_for('ner_check') }}" class="nav-link">NER Check</a>
-                    <a href="#" class="nav-link">About us</a>
-                    <a href="#" class="nav-link">Documentation</a>
-                    <a href="#" class="nav-link">Examples</a>
-                </nav>
-                <div class="theme-toggle">
-                    <button id="theme-toggle-btn" class="theme-btn" title="Toggle theme">🌙</button>
-                </div>
-            </div>
-        </header>
-
-        <div class="main-content">
-            {% block content %}{% endblock %}
+    <nav class="navbar">
+        <div class="nav-brand">
+            <a href="{{ url_for('index') }}">AI Archive</a>
         </div>
 
-        <footer class="footer">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4>AI Archive App</h4>
-                    <p>Application for extracting text and named entities from images.</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Links</h4>
-                    <ul>
-                        <li><a href="#">Privacy Policy</a></li>
-                        <li><a href="#">Terms of Use</a></li>
-                        <li><a href="#">Help</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Social Media</h4>
-                    <ul>
-                        <li><a href="https://github.com/DefinitelyNik/AI_Archive">GitHub</a></li>
-                        <li><a href="#">Telegram</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Contact</h4>
-                    <p>Email: support@example.com</p>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 AI Archive App. All rights reserved.</p>
-            </div>
-        </footer>
+        {% if current_user.is_authenticated %}
+        <div class="nav-links">
+            <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>
+                🏠 Главная
+            </a>
+            <a href="{{ url_for('ner_check') }}" {% if request.endpoint == 'ner_check' %}class="active"{% endif %}>
+                🔍 NER Проверка
+            </a>
+            <a href="{{ url_for('my_results') }}" {% if request.endpoint == 'my_results' %}class="active"{% endif %}>
+                📊 Мои результаты
+            </a>
+        </div>
+
+        <div class="nav-user">
+            <span class="username">{{ current_user.username }}</span>
+            <button class="theme-toggle" id="theme-toggle" title="Сменить тему">
+                <span id="theme-icon">☀️</span>
+            </button>
+            <a href="{{ url_for('logout') }}" class="btn btn-sm btn-secondary">Выйти</a>
+        </div>
+        {% endif %}
+    </nav>
+
+    <div class="container {% block container_class %}{% endblock %}">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
     </div>
 
     <script>
-        const themeToggleBtn = document.getElementById('theme-toggle-btn');
+        // Theme toggle functionality
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const html = document.documentElement;
 
-        window.addEventListener('DOMContentLoaded', () => {
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'light') {
-                document.body.classList.add('light-theme');
-                themeToggleBtn.textContent = '☀️';
-            } else {
-                document.body.classList.remove('light-theme');
-                themeToggleBtn.textContent = '🌙';
-            }
-        });
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        html.setAttribute('data-theme', savedTheme);
+        updateThemeIcon(savedTheme);
 
-        themeToggleBtn.addEventListener('click', function() {
-            document.body.classList.toggle('light-theme');
-            if (document.body.classList.contains('light-theme')) {
-                localStorage.setItem('theme', 'light');
-                themeToggleBtn.textContent = '☀️';
-            } else {
-                localStorage.setItem('theme', 'dark');
-                themeToggleBtn.textContent = '🌙';
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                const currentTheme = html.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                html.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                updateThemeIcon(newTheme);
+            });
+        }
+
+        function updateThemeIcon(theme) {
+            if (themeIcon) {
+                themeIcon.textContent = theme === 'dark' ? '☀️' : '🌙';
             }
-        });
+        }
     </script>
 
     {% block scripts %}{% endblock %}

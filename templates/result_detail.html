@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Результат - AI Archive{% endblock %}
+
+{% block content %}
+<div class="result-detail">
+    <div class="page-header">
+        <div class="flex-between">
+            <div>
+                <h1>📄 Результат обработки</h1>
+                <p>{{ result.image_filename or 'Документ' }}</p>
+            </div>
+            <div style="display: flex; gap: 0.75rem;">
+                <a href="{{ url_for('my_results') }}" class="btn btn-secondary">
+                    ← Назад
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    🚀 Новая обработка
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="result-meta-grid">
+        <div class="meta-item">
+            <div class="meta-label">Дата обработки</div>
+            <div class="meta-value">{{ result.created_at.strftime('%d.%m.%Y %H:%M') }}</div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Тип обработки</div>
+            <div class="meta-value">{{ result.text_type|upper }}</div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Модель</div>
+            <div class="meta-value">{{ result.ocr_model }}</div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Перевод</div>
+            <div class="meta-value">
+                {% if result.translated %}
+                    <span class="text-success">✓ Выполнен</span>
+                {% else %}
+                    <span class="text-muted">✗ Не выполнялся</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if result.image_filename %}
+    <div class="result-section result-image">
+        <h3>Изображение</h3>
+        <img src="{{ url_for('static', filename='uploads/' + result.image_filename) }}"
+             alt="Processed image">
+    </div>
+    {% endif %}
+
+    {% if result.processed_text_html %}
+    <div class="result-section result-text">
+        <h3>Текст с NER-разметкой</h3>
+        <div class="ner-output">
+            {{ result.processed_text_html|safe }}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if result.relations_json %}
+    <div class="result-section result-relations">
+        <h3>Извлечённые связи</h3>
+        <pre class="relations-json">{{ result.relations_json }}</pre>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

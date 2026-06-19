@@ -1,95 +1,343 @@
 {% extends "base.html" %}
 
-{% block title %}AI Archive - Home{% endblock %}
+{% block title %}Главная - AI Archive{% endblock %}
+
+{% block container_class %}container-fullwidth{% endblock %}
 
 {% block content %}
-<div class="input-section">
-    <h1>Upload an image</h1>
-
-    <form method="POST" enctype="multipart/form-data" class="upload-form">
-        <div class="form-group">
-            <label class="toggle-label" for="image">Choose an image:</label>
-            <label for="image" class="upload-label">Choose file</label>
-            <input type="file" name="image" id="image" accept="image/*" required style="display: none;">
-            <span class="file-name" id="file-name">No file selected</span>
-        </div>
-
-        <div class="form-group">
-            <label class="toggle-label">Text type:</label>
-            <select name="text_type" id="text_type" class="text-type-select" onchange="toggleOCRModel()">
-                <option value="ocr">Machine Printed Text (OCR)</option>
-                <option value="htr">Handwritten Text (HTR)</option>
-            </select>
-        </div>
-
-        <div class="form-group" id="ocr-model-group">
-            <label class="toggle-label">OCR Model:</label>
-            <select name="ocr_model" id="ocr_model" class="text-type-select">
-                <option value="easyocr">EasyOCR</option>
-                <option value="tesseract">Tesseract 5 (LSTM)</option>
-            </select>
-        </div>
-
-        <div class="form-group">
-            <label class="checkbox-label">
-                <input type="checkbox" name="translate">
-                Translate pre-revolutionary Russian to post-revolutionary
-            </label>
-        </div>
-
-        <button type="submit" class="submit-btn">Process</button>
-    </form>
+<div class="page-header">
+    <h1>🤖 Обработка документов</h1>
+    <p>Загрузите изображение для OCR/HTR распознавания и анализа связей</p>
 </div>
 
-<div class="legend">
-    <h3>NER Tags Legend:</h3>
-    <ul>
-        <li>
-            <span class="legend-mark ner-per"></span>
-            <span>PER - Person</span>
-        </li>
-        <li>
-            <span class="legend-mark ner-loc"></span>
-            <span>LOC - Location</span>
-        </li>
-        <li>
-            <span class="legend-mark ner-org"></span>
-            <span>ORG - Organization</span>
-        </li>
-        <li>
-            <span class="legend-mark ner-date"></span>
-            <span>DATE - Date</span>
-        </li>
-    </ul>
+<div class="index-layout-fullwidth">
+    <!-- Left: Upload Form -->
+    <div class="upload-column">
+        <div id="upload-form-container" class="upload-form">
+            <form id="upload-form" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="image" class="required">Изображение</label>
+                    <input type="file" id="image" name="image" accept="image/*" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Тип обработки</label>
+                    <div class="radio-group">
+                        <label>
+                            <input type="radio" name="text_type" value="ocr" checked>
+                            OCR (печатный текст)
+                        </label>
+                        <label>
+                            <input type="radio" name="text_type" value="htr">
+                            HTR (рукописный текст)
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="ocr_model">Модель OCR</label>
+                    <select id="ocr_model" name="ocr_model">
+                        <option value="easyocr">EasyOCR</option>
+                        <option value="tesseract">Tesseract</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="translate">
+                        Перевести дореволюционный текст
+                    </label>
+                </div>
+
+                <button type="submit" id="submit-btn" class="btn btn-primary btn-block">
+                    🚀 Обработать
+                </button>
+            </form>
+
+            <div class="upload-hint">
+                <p>💡 Результат появится справа по мере обработки</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Results Panel -->
+    <div class="results-column" id="results-column" style="display: none;">
+        <div class="results-panel">
+            <div class="panel-header">
+                <h2>📊 Результат обработки</h2>
+                <button class="btn btn-sm btn-secondary" id="close-panel-btn" title="Закрыть">✕</button>
+            </div>
+
+            <!-- Progress Timeline -->
+            <div class="processing-timeline" id="processing-timeline">
+                <div class="timeline-step" data-stage="recognizing">
+                    <div class="step-indicator">
+                        <div class="step-icon">🔍</div>
+                        <div class="step-line"></div>
+                    </div>
+                    <div class="step-content">
+                        <h4>Распознавание текста</h4>
+                        <p class="step-status">Ожидание...</p>
+                        <div class="step-result"></div>
+                    </div>
+                </div>
+
+                <div class="timeline-step" data-stage="translating" id="translate-step" style="display: none;">
+                    <div class="step-indicator">
+                        <div class="step-icon">🌐</div>
+                        <div class="step-line"></div>
+                    </div>
+                    <div class="step-content">
+                        <h4>Перевод текста</h4>
+                        <p class="step-status">Ожидание...</p>
+                        <div class="step-result"></div>
+                    </div>
+                </div>
+
+                <div class="timeline-step" data-stage="ner">
+                    <div class="step-indicator">
+                        <div class="step-icon">🏷️</div>
+                        <div class="step-line"></div>
+                    </div>
+                    <div class="step-content">
+                        <h4>Анализ именованных сущностей</h4>
+                        <p class="step-status">Ожидание...</p>
+                        <div class="step-result"></div>
+                    </div>
+                </div>
+
+                <div class="timeline-step" data-stage="relations">
+                    <div class="step-indicator">
+                        <div class="step-icon">🔗</div>
+                    </div>
+                    <div class="step-content">
+                        <h4>Извлечение связей</h4>
+                        <p class="step-status">Ожидание...</p>
+                        <div class="step-result"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Final Result Actions -->
+            <div class="final-actions" id="final-actions" style="display: none;">
+                <a href="#" id="view-full-result-btn" class="btn btn-primary">
+                    📄 Открыть полный результат
+                </a>
+                <button class="btn btn-secondary" id="new-processing-btn">
+                    🔄 Новая обработка
+                </button>
+            </div>
+
+            <!-- Error State -->
+            <div class="error-state" id="error-state" style="display: none;">
+                <div class="error-icon">⚠️</div>
+                <h3>Ошибка обработки</h3>
+                <p id="error-message"></p>
+                <button class="btn btn-primary" id="retry-btn">Попробовать снова</button>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-function toggleOCRModel() {
-    const textType = document.getElementById('text_type').value;
-    const ocrModelGroup = document.getElementById('ocr-model-group');
+const STAGE_NAMES = {
+    queued: 'В очереди',
+    recognizing: 'Распознавание текста',
+    translating: 'Перевод текста',
+    ner: 'Анализ сущностей',
+    relations: 'Извлечение связей',
+    completed: 'Завершено',
+    failed: 'Ошибка'
+};
 
-    if (textType === 'htr') {
-        ocrModelGroup.style.display = 'none';
-    } else {
-        ocrModelGroup.style.display = 'flex';
+const STAGE_ORDER = ['recognizing', 'translating', 'ner', 'relations', 'completed'];
+
+let currentResultId = null;
+let pollingInterval = null;
+
+// Form submission
+document.getElementById('upload-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+    const submitBtn = document.getElementById('submit-btn');
+    const translateChecked = formData.get('translate') !== null;
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '⏳ Загрузка...';
+
+    try {
+        const response = await fetch('/process', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            currentResultId = data.result_id;
+            initializeResultsPanel(translateChecked);
+            startPolling();
+        } else {
+            alert('Ошибка: ' + data.error);
+            resetForm();
+        }
+    } catch (error) {
+        alert('Ошибка соединения: ' + error.message);
+        resetForm();
+    }
+});
+
+function initializeResultsPanel(translateEnabled) {
+    const resultsColumn = document.getElementById('results-column');
+    const translateStep = document.getElementById('translate-step');
+
+    resultsColumn.style.display = 'block';
+    resultsColumn.classList.add('slide-in');
+
+    // Show/hide translation step
+    translateStep.style.display = translateEnabled ? 'grid' : 'none';
+
+    // Reset all steps
+    document.querySelectorAll('.timeline-step').forEach(step => {
+        step.classList.remove('active', 'completed');
+        step.querySelector('.step-status').textContent = 'Ожидание...';
+        step.querySelector('.step-result').innerHTML = '';
+    });
+
+    document.getElementById('final-actions').style.display = 'none';
+    document.getElementById('error-state').style.display = 'none';
+}
+
+function startPolling() {
+    if (pollingInterval) clearInterval(pollingInterval);
+
+    pollingInterval = setInterval(async () => {
+        try {
+            const response = await fetch(`/api/result/${currentResultId}/progress`);
+            const data = await response.json();
+
+            updateTimeline(data);
+
+            if (data.status === 'completed' || data.status === 'failed') {
+                clearInterval(pollingInterval);
+                handleFinalState(data);
+            }
+        } catch (error) {
+            console.error('Polling error:', error);
+        }
+    }, 1000);
+}
+
+function updateTimeline(data) {
+    const currentStage = data.current_stage;
+    const stageData = data.stage_data || {};
+
+    const currentIdx = STAGE_ORDER.indexOf(currentStage);
+
+    document.querySelectorAll('.timeline-step').forEach(step => {
+        const stage = step.dataset.stage;
+        const stageIdx = STAGE_ORDER.indexOf(stage);
+        const statusEl = step.querySelector('.step-status');
+        const resultEl = step.querySelector('.step-result');
+
+        if (stage === 'translating' && step.style.display === 'none') {
+            return;
+        }
+
+        step.classList.remove('active', 'completed');
+
+        if (stageIdx < currentIdx || currentStage === 'completed') {
+            step.classList.add('completed');
+            statusEl.textContent = '✓ Завершено';
+
+            if (stageData[stage]) {
+                renderStageResult(stage, stageData[stage], resultEl);
+            }
+        } else if (stageIdx === currentIdx) {
+            step.classList.add('active');
+            statusEl.textContent = '⚙️ Обработка...';
+        } else {
+            statusEl.textContent = 'Ожидание...';
+        }
+    });
+}
+
+function renderStageResult(stage, data, container) {
+    container.innerHTML = '';
+    container.classList.add('fade-in');
+
+    if (stage === 'recognizing') {
+        const preview = document.createElement('div');
+        preview.className = 'stage-text-preview';
+        preview.textContent = data.text ? data.text.substring(0, 300) + (data.text.length > 300 ? '...' : '') : '';
+        container.appendChild(preview);
+    } else if (stage === 'translating') {
+        const preview = document.createElement('div');
+        preview.className = 'stage-text-preview translated';
+        preview.textContent = data.text ? data.text.substring(0, 300) + (data.text.length > 300 ? '...' : '') : '';
+        container.appendChild(preview);
+    } else if (stage === 'ner') {
+        const preview = document.createElement('div');
+        preview.className = 'stage-ner-preview';
+        preview.innerHTML = data.html || '';
+        container.appendChild(preview);
+    } else if (stage === 'relations') {
+        const info = document.createElement('div');
+        info.className = 'stage-relations-info';
+        info.innerHTML = `<strong>Найдено связей:</strong> ${data.count || 0}`;
+        container.appendChild(info);
+
+        if (data.json) {
+            const preview = document.createElement('pre');
+            preview.className = 'stage-relations-preview';
+            preview.textContent = data.json.length > 500 ? data.json.substring(0, 500) + '...' : data.json;
+            container.appendChild(preview);
+        }
     }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    toggleOCRModel();
+function handleFinalState(data) {
+    if (data.status === 'completed') {
+        document.getElementById('final-actions').style.display = 'flex';
+        document.getElementById('view-full-result-btn').href = `/result/${currentResultId}`;
+        document.getElementById('final-actions').classList.add('fade-in');
+    } else if (data.status === 'failed') {
+        document.getElementById('error-state').style.display = 'block';
+        document.getElementById('error-message').textContent = data.error || 'Неизвестная ошибка';
+        document.getElementById('error-state').classList.add('fade-in');
+    }
+}
 
-    const fileInput = document.getElementById('image');
-    const fileName = document.getElementById('file-name');
+function resetForm() {
+    const submitBtn = document.getElementById('submit-btn');
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '🚀 Обработать';
+}
 
-    fileInput.addEventListener('change', function() {
-        if (this.files && this.files.length > 0) {
-            fileName.textContent = this.files[0].name;
-        } else {
-            fileName.textContent = 'No file selected';
-        }
-    });
+// Close panel button
+document.getElementById('close-panel-btn').addEventListener('click', () => {
+    if (pollingInterval) clearInterval(pollingInterval);
+    document.getElementById('results-column').style.display = 'none';
+    resetForm();
+    document.getElementById('upload-form').reset();
+});
+
+// New processing button
+document.getElementById('new-processing-btn').addEventListener('click', () => {
+    if (pollingInterval) clearInterval(pollingInterval);
+    document.getElementById('results-column').style.display = 'none';
+    resetForm();
+    document.getElementById('upload-form').reset();
+});
+
+// Retry button
+document.getElementById('retry-btn').addEventListener('click', () => {
+    document.getElementById('error-state').style.display = 'none';
+    document.getElementById('results-column').style.display = 'none';
+    resetForm();
 });
 </script>
 {% endblock %}
