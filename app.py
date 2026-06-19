@@ -2,7 +2,7 @@ import json
 import os
 import uuid
 import threading
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
+from flask import Flask, render_template, request, redirect, url_for, jsonify, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flasgger import Swagger
 from models import db, User, ProcessingResult
