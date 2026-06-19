@@ -1,40 +1,40 @@
 {% extends "base.html" %}
 
-{% block title %}Главная - AI Archive{% endblock %}
+{% block title %}AI Archive - Главная{% endblock %}
 
 {% block container_class %}container-fullwidth{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>🤖 Обработка документов</h1>
-    <p>Загрузите изображение для OCR/HTR распознавания и анализа связей</p>
-</div>
 
-<div class="index-layout-fullwidth">
-    <!-- Left: Upload Form -->
-    <div class="upload-column">
-        <div id="upload-form-container" class="upload-form">
-            <form id="upload-form" enctype="multipart/form-data">
+    <div class="page-header">
+        <h1>🤖 AI Archive</h1>
+        <p>Распознавание текста, перевод, извлечение именованных сущностей и связей</p>
+    </div>
+
+    <div class="index-layout-fullwidth">
+        <!-- Left Column - Upload Form -->
+        <div class="upload-column">
+            <form id="uploadForm" class="upload-form" enctype="multipart/form-data">
                 <div class="form-group">
                     <label for="image" class="required">Изображение</label>
                     <input type="file" id="image" name="image" accept="image/*" required>
                 </div>
 
                 <div class="form-group">
-                    <label>Тип обработки</label>
+                    <label class="required">Тип текста</label>
                     <div class="radio-group">
                         <label>
                             <input type="radio" name="text_type" value="ocr" checked>
-                            OCR (печатный текст)
+                            Печатный текст (OCR)
                         </label>
                         <label>
                             <input type="radio" name="text_type" value="htr">
-                            HTR (рукописный текст)
+                            Рукописный текст (HTR)
                         </label>
                     </div>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" id="ocrModelGroup">
                     <label for="ocr_model">Модель OCR</label>
                     <select id="ocr_model" name="ocr_model">
                         <option value="easyocr">EasyOCR</option>
@@ -44,126 +44,153 @@
 
                 <div class="form-group">
                     <label class="checkbox-label">
-                        <input type="checkbox" name="translate">
-                        Перевести дореволюционный текст
+                        <input type="checkbox" id="translate" name="translate">
+                        Перевести на русский язык
                     </label>
                 </div>
 
-                <button type="submit" id="submit-btn" class="btn btn-primary btn-block">
-                    🚀 Обработать
+                <button type="submit" class="btn btn-primary btn-block btn-lg">
+                    🚀 Начать обработку
                 </button>
+
+                <div class="upload-hint">
+                    <p>💡 Поддерживаются форматы: JPG, PNG, TIFF, BMP. Максимальный размер: 16MB</p>
+                </div>
             </form>
+        </div>
 
-            <div class="upload-hint">
-                <p>💡 Результат появится справа по мере обработки</p>
+        <!-- Right Column - Results Panel -->
+        <div class="results-column">
+            <div class="results-panel" id="resultsPanel">
+                <div class="panel-header">
+                    <h2>📊 Результаты обработки</h2>
+                    <button id="resetBtn" class="btn btn-secondary btn-sm" style="display: none;">
+                        🔄 Сбросить
+                    </button>
+                </div>
+
+                <!-- Placeholder - показывается когда нет активной обработки -->
+                <div id="resultsPlaceholder" class="results-placeholder">
+                    <div class="placeholder-icon">📄</div>
+                    <h3>Здесь появится результат обработки</h3>
+                    <p>Загрузите изображение в форму слева и нажмите "Начать обработку". Прогресс будет отображаться здесь в реальном времени.</p>
+                    <div class="placeholder-steps">
+                        <div class="placeholder-step">
+                            <span class="step-num">1</span>
+                            <span>Распознавание текста (OCR/HTR)</span>
+                        </div>
+                        <div class="placeholder-step">
+                            <span class="step-num">2</span>
+                            <span>Перевод (опционально)</span>
+                        </div>
+                        <div class="placeholder-step">
+                            <span class="step-num">3</span>
+                            <span>Извлечение именованных сущностей (NER)</span>
+                        </div>
+                        <div class="placeholder-step">
+                            <span class="step-num">4</span>
+                            <span>Построение графа связей</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Processing Timeline - скрыт до начала обработки -->
+                <div id="processingTimeline" class="processing-timeline" style="display: none;">
+                    <!-- Stage 1: Recognition -->
+                    <div class="timeline-step" id="step-recognizing">
+                        <div class="step-indicator">
+                            <div class="step-icon">🔍</div>
+                            <div class="step-line"></div>
+                        </div>
+                        <div class="step-content">
+                            <h4>Распознавание текста</h4>
+                            <p class="step-status">Ожидание...</p>
+                            <div class="step-result" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Stage 2: Translation -->
+                    <div class="timeline-step" id="step-translating" style="display: none;">
+                        <div class="step-indicator">
+                            <div class="step-icon">🌐</div>
+                            <div class="step-line"></div>
+                        </div>
+                        <div class="step-content">
+                            <h4>Перевод текста</h4>
+                            <p class="step-status">Ожидание...</p>
+                            <div class="step-result" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Stage 3: NER -->
+                    <div class="timeline-step" id="step-ner">
+                        <div class="step-indicator">
+                            <div class="step-icon">🏷️</div>
+                            <div class="step-line"></div>
+                        </div>
+                        <div class="step-content">
+                            <h4>Именованные сущности</h4>
+                            <p class="step-status">Ожидание...</p>
+                            <div class="step-result" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Stage 4: Relations -->
+                    <div class="timeline-step" id="step-relations">
+                        <div class="step-indicator">
+                            <div class="step-icon">🔗</div>
+                            <div class="step-line"></div>
+                        </div>
+                        <div class="step-content">
+                            <h4>Извлечение связей</h4>
+                            <p class="step-status">Ожидание...</p>
+                            <div class="step-result" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Final Actions -->
+                <div id="finalActions" class="final-actions" style="display: none;">
+                    <a href="#" id="viewFullResultBtn" class="btn btn-primary btn-lg">
+                        📖 Открыть полный результат
+                    </a>
+                </div>
+
+                <!-- Error State -->
+                <div id="errorState" class="error-state" style="display: none;">
+                    <div class="error-icon">❌</div>
+                    <h3>Ошибка обработки</h3>
+                    <p id="errorMessage">Произошла неизвестная ошибка</p>
+                    <button onclick="resetResults()" class="btn btn-secondary">
+                        🔄 Попробовать снова
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Right: Results Panel -->
-    <div class="results-column" id="results-column" style="display: none;">
-        <div class="results-panel">
-            <div class="panel-header">
-                <h2>📊 Результат обработки</h2>
-                <button class="btn btn-sm btn-secondary" id="close-panel-btn" title="Закрыть">✕</button>
-            </div>
-
-            <!-- Progress Timeline -->
-            <div class="processing-timeline" id="processing-timeline">
-                <div class="timeline-step" data-stage="recognizing">
-                    <div class="step-indicator">
-                        <div class="step-icon">🔍</div>
-                        <div class="step-line"></div>
-                    </div>
-                    <div class="step-content">
-                        <h4>Распознавание текста</h4>
-                        <p class="step-status">Ожидание...</p>
-                        <div class="step-result"></div>
-                    </div>
-                </div>
-
-                <div class="timeline-step" data-stage="translating" id="translate-step" style="display: none;">
-                    <div class="step-indicator">
-                        <div class="step-icon">🌐</div>
-                        <div class="step-line"></div>
-                    </div>
-                    <div class="step-content">
-                        <h4>Перевод текста</h4>
-                        <p class="step-status">Ожидание...</p>
-                        <div class="step-result"></div>
-                    </div>
-                </div>
-
-                <div class="timeline-step" data-stage="ner">
-                    <div class="step-indicator">
-                        <div class="step-icon">🏷️</div>
-                        <div class="step-line"></div>
-                    </div>
-                    <div class="step-content">
-                        <h4>Анализ именованных сущностей</h4>
-                        <p class="step-status">Ожидание...</p>
-                        <div class="step-result"></div>
-                    </div>
-                </div>
-
-                <div class="timeline-step" data-stage="relations">
-                    <div class="step-indicator">
-                        <div class="step-icon">🔗</div>
-                    </div>
-                    <div class="step-content">
-                        <h4>Извлечение связей</h4>
-                        <p class="step-status">Ожидание...</p>
-                        <div class="step-result"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Final Result Actions -->
-            <div class="final-actions" id="final-actions" style="display: none;">
-                <a href="#" id="view-full-result-btn" class="btn btn-primary">
-                    📄 Открыть полный результат
-                </a>
-                <button class="btn btn-secondary" id="new-processing-btn">
-                    🔄 Новая обработка
-                </button>
-            </div>
-
-            <!-- Error State -->
-            <div class="error-state" id="error-state" style="display: none;">
-                <div class="error-icon">⚠️</div>
-                <h3>Ошибка обработки</h3>
-                <p id="error-message"></p>
-                <button class="btn btn-primary" id="retry-btn">Попробовать снова</button>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block scripts %}
 <script>
-const STAGE_NAMES = {
-    queued: 'В очереди',
-    recognizing: 'Распознавание текста',
-    translating: 'Перевод текста',
-    ner: 'Анализ сущностей',
-    relations: 'Извлечение связей',
-    completed: 'Завершено',
-    failed: 'Ошибка'
-};
-
-const STAGE_ORDER = ['recognizing', 'translating', 'ner', 'relations', 'completed'];
-
 let currentResultId = null;
 let pollingInterval = null;
 
-// Form submission
-document.getElementById('upload-form').addEventListener('submit', async function(e) {
+// Показ/скрытие модели OCR в зависимости от типа текста
+document.querySelectorAll('input[name="text_type"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        const ocrModelGroup = document.getElementById('ocrModelGroup');
+        if (e.target.value === 'ocr') {
+            ocrModelGroup.style.display = 'block';
+        } else {
+            ocrModelGroup.style.display = 'none';
+        }
+    });
+});
+
+// Обработка отправки формы
+document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const formData = new FormData(this);
-    const submitBtn = document.getElementById('submit-btn');
-    const translateChecked = formData.get('translate') !== null;
+    const formData = new FormData(e.target);
+    const submitBtn = e.target.querySelector('button[type="submit"]');
 
     submitBtn.disabled = true;
     submitBtn.innerHTML = '⏳ Загрузка...';
@@ -178,37 +205,33 @@ document.getElementById('upload-form').addEventListener('submit', async function
 
         if (data.success) {
             currentResultId = data.result_id;
-            initializeResultsPanel(translateChecked);
             startPolling();
+            showProcessingView();
         } else {
-            alert('Ошибка: ' + data.error);
-            resetForm();
+            showError(data.error || 'Ошибка при запуске обработки');
         }
     } catch (error) {
-        alert('Ошибка соединения: ' + error.message);
-        resetForm();
+        showError('Ошибка соединения с сервером');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '🚀 Начать обработку';
     }
 });
 
-function initializeResultsPanel(translateEnabled) {
-    const resultsColumn = document.getElementById('results-column');
-    const translateStep = document.getElementById('translate-step');
+function showProcessingView() {
+    document.getElementById('resultsPlaceholder').style.display = 'none';
+    document.getElementById('processingTimeline').style.display = 'flex';
+    document.getElementById('resetBtn').style.display = 'inline-flex';
+    document.getElementById('errorState').style.display = 'none';
+    document.getElementById('finalActions').style.display = 'none';
+}
 
-    resultsColumn.style.display = 'block';
-    resultsColumn.classList.add('slide-in');
-
-    // Show/hide translation step
-    translateStep.style.display = translateEnabled ? 'grid' : 'none';
-
-    // Reset all steps
-    document.querySelectorAll('.timeline-step').forEach(step => {
-        step.classList.remove('active', 'completed');
-        step.querySelector('.step-status').textContent = 'Ожидание...';
-        step.querySelector('.step-result').innerHTML = '';
-    });
-
-    document.getElementById('final-actions').style.display = 'none';
-    document.getElementById('error-state').style.display = 'none';
+function showPlaceholder() {
+    document.getElementById('resultsPlaceholder').style.display = 'block';
+    document.getElementById('processingTimeline').style.display = 'none';
+    document.getElementById('resetBtn').style.display = 'none';
+    document.getElementById('errorState').style.display = 'none';
+    document.getElementById('finalActions').style.display = 'none';
 }
 
 function startPolling() {
@@ -219,11 +242,11 @@ function startPolling() {
             const response = await fetch(`/api/result/${currentResultId}/progress`);
             const data = await response.json();
 
-            updateTimeline(data);
+            updateProgress(data);
 
             if (data.status === 'completed' || data.status === 'failed') {
                 clearInterval(pollingInterval);
-                handleFinalState(data);
+                pollingInterval = null;
             }
         } catch (error) {
             console.error('Polling error:', error);
@@ -231,113 +254,143 @@ function startPolling() {
     }, 1000);
 }
 
-function updateTimeline(data) {
-    const currentStage = data.current_stage;
-    const stageData = data.stage_data || {};
+function updateProgress(data) {
+    const { current_stage, stage_data, status, error } = data;
 
-    const currentIdx = STAGE_ORDER.indexOf(currentStage);
+    if (status === 'failed') {
+        showError(error || 'Произошла ошибка при обработке');
+        return;
+    }
 
-    document.querySelectorAll('.timeline-step').forEach(step => {
-        const stage = step.dataset.stage;
-        const stageIdx = STAGE_ORDER.indexOf(stage);
-        const statusEl = step.querySelector('.step-status');
-        const resultEl = step.querySelector('.step-result');
+    // Определяем порядок этапов
+    const stages = ['recognizing', 'translating', 'ner', 'relations'];
+    const stageIndex = stages.indexOf(current_stage);
 
-        if (stage === 'translating' && step.style.display === 'none') {
-            return;
-        }
+    // Обновляем видимость шага перевода
+    const translatingStep = document.getElementById('step-translating');
+    if (data.translated) {
+        translatingStep.style.display = 'grid';
+    } else {
+        translatingStep.style.display = 'none';
+    }
 
-        step.classList.remove('active', 'completed');
+    // Обновляем статус каждого шага
+    stages.forEach((stage, index) => {
+        const stepEl = document.getElementById(`step-${stage}`);
+        if (!stepEl) return;
 
-        if (stageIdx < currentIdx || currentStage === 'completed') {
-            step.classList.add('completed');
+        // Скрываем шаг перевода если не нужен
+        if (stage === 'translating' && !data.translated) return;
+
+        const statusEl = stepEl.querySelector('.step-status');
+        const resultEl = stepEl.querySelector('.step-result');
+
+        // Сбрасываем классы
+        stepEl.classList.remove('active', 'completed');
+
+        const stageInfo = stage_data[stage];
+
+        if (stageInfo && stageInfo.status === 'completed') {
+            // Этап завершен
+            stepEl.classList.add('completed');
             statusEl.textContent = '✓ Завершено';
 
-            if (stageData[stage]) {
-                renderStageResult(stage, stageData[stage], resultEl);
+            // Показываем результат
+            if (resultEl) {
+                resultEl.style.display = 'flex';
+                resultEl.innerHTML = getStageResultHTML(stage, stageInfo);
             }
-        } else if (stageIdx === currentIdx) {
-            step.classList.add('active');
-            statusEl.textContent = '⚙️ Обработка...';
+        } else if (index === stageIndex) {
+            // Текущий активный этап
+            stepEl.classList.add('active');
+            statusEl.textContent = '⏳ Обрабатывается...';
+            if (resultEl) {
+                resultEl.style.display = 'none';
+                resultEl.innerHTML = '';
+            }
+        } else if (index < stageIndex) {
+            // Уже пройденные этапы (если по какой-то причине нет данных)
+            stepEl.classList.add('completed');
+            statusEl.textContent = '✓ Завершено';
         } else {
+            // Ожидание
             statusEl.textContent = 'Ожидание...';
+            if (resultEl) {
+                resultEl.style.display = 'none';
+                resultEl.innerHTML = '';
+            }
         }
     });
+
+    // Если все завершено - показываем финальные действия
+    if (status === 'completed') {
+        document.getElementById('finalActions').style.display = 'flex';
+        document.getElementById('viewFullResultBtn').href = `/result/${currentResultId}`;
+    }
 }
 
-function renderStageResult(stage, data, container) {
-    container.innerHTML = '';
-    container.classList.add('fade-in');
+function getStageResultHTML(stage, data) {
+    switch(stage) {
+        case 'recognizing':
+            return `<pre class="stage-text-preview original">${escapeHtml(data.text || '')}</pre>`;
 
-    if (stage === 'recognizing') {
-        const preview = document.createElement('div');
-        preview.className = 'stage-text-preview';
-        preview.textContent = data.text ? data.text.substring(0, 300) + (data.text.length > 300 ? '...' : '') : '';
-        container.appendChild(preview);
-    } else if (stage === 'translating') {
-        const preview = document.createElement('div');
-        preview.className = 'stage-text-preview translated';
-        preview.textContent = data.text ? data.text.substring(0, 300) + (data.text.length > 300 ? '...' : '') : '';
-        container.appendChild(preview);
-    } else if (stage === 'ner') {
-        const preview = document.createElement('div');
-        preview.className = 'stage-ner-preview';
-        preview.innerHTML = data.html || '';
-        container.appendChild(preview);
-    } else if (stage === 'relations') {
-        const info = document.createElement('div');
-        info.className = 'stage-relations-info';
-        info.innerHTML = `<strong>Найдено связей:</strong> ${data.count || 0}`;
-        container.appendChild(info);
+        case 'translating':
+            return `<pre class="stage-text-preview translated">${escapeHtml(data.text || '')}</pre>`;
 
-        if (data.json) {
-            const preview = document.createElement('pre');
-            preview.className = 'stage-relations-preview';
-            preview.textContent = data.json.length > 500 ? data.json.substring(0, 500) + '...' : data.json;
-            container.appendChild(preview);
+        case 'ner':
+            return `<div class="stage-ner-preview ner-output">${data.html || ''}</div>`;
+
+        case 'relations':
+            const count = data.count || 0;
+            let html = `<div class="stage-relations-info">
+                <strong>🔗 Найдено связей: ${count}</strong>
+            </div>`;
+            if (data.json) {
+                html += `<pre class="stage-relations-preview">${escapeHtml(data.json)}</pre>`;
+            }
+            return html;
+
+        default:
+            return '';
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function showError(message) {
+    document.getElementById('resultsPlaceholder').style.display = 'none';
+    document.getElementById('processingTimeline').style.display = 'none';
+    document.getElementById('errorState').style.display = 'block';
+    document.getElementById('errorMessage').textContent = message;
+}
+
+function resetResults() {
+    if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+    }
+    currentResultId = null;
+
+    // Сбрасываем все шаги
+    document.querySelectorAll('.timeline-step').forEach(step => {
+        step.classList.remove('active', 'completed');
+        const statusEl = step.querySelector('.step-status');
+        const resultEl = step.querySelector('.step-result');
+        if (statusEl) statusEl.textContent = 'Ожидание...';
+        if (resultEl) {
+            resultEl.style.display = 'none';
+            resultEl.innerHTML = '';
         }
-    }
+    });
+
+    showPlaceholder();
 }
 
-function handleFinalState(data) {
-    if (data.status === 'completed') {
-        document.getElementById('final-actions').style.display = 'flex';
-        document.getElementById('view-full-result-btn').href = `/result/${currentResultId}`;
-        document.getElementById('final-actions').classList.add('fade-in');
-    } else if (data.status === 'failed') {
-        document.getElementById('error-state').style.display = 'block';
-        document.getElementById('error-message').textContent = data.error || 'Неизвестная ошибка';
-        document.getElementById('error-state').classList.add('fade-in');
-    }
-}
-
-function resetForm() {
-    const submitBtn = document.getElementById('submit-btn');
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = '🚀 Обработать';
-}
-
-// Close panel button
-document.getElementById('close-panel-btn').addEventListener('click', () => {
-    if (pollingInterval) clearInterval(pollingInterval);
-    document.getElementById('results-column').style.display = 'none';
-    resetForm();
-    document.getElementById('upload-form').reset();
-});
-
-// New processing button
-document.getElementById('new-processing-btn').addEventListener('click', () => {
-    if (pollingInterval) clearInterval(pollingInterval);
-    document.getElementById('results-column').style.display = 'none';
-    resetForm();
-    document.getElementById('upload-form').reset();
-});
-
-// Retry button
-document.getElementById('retry-btn').addEventListener('click', () => {
-    document.getElementById('error-state').style.display = 'none';
-    document.getElementById('results-column').style.display = 'none';
-    resetForm();
-});
+document.getElementById('resetBtn').addEventListener('click', resetResults);
 </script>
+
 {% endblock %}
