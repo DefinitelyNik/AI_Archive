@@ -2,8 +2,10 @@ import json
 import os
 import uuid
 import threading
-from flask import Flask, render_template, request, redirect, url_for, jsonify, flash
+from datetime import timedelta
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_session import Session
 from flasgger import Swagger
 from models import db, User, ProcessingResult
 from ocr import perform_ocr
@@ -13,10 +15,17 @@ from ner import perform_ner, translate_text
 from relations import extract_relations
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24))
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///archive.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Persistent session configuration
+app.config['SESSION_TYPE'] = 'sqlalchemy'
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
+app.config['SESSION_USE_SIGNER'] = True
+app.config['SESSION_KEY_PREFIX'] = 'ai_archive_'
 
 UPLOAD_FOLDER = 'static/uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -24,6 +33,10 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Initialize extensions
 db.init_app(app)
+
+app.config['SESSION_SQLALCHEMY'] = db
+Session(app)
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -46,8 +59,28 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 
+# Create database tables
 with app.app_context():
     db.create_all()
+
+    # Create session table for flask-session
+    try:
+        db.session.execute(db.text("SELECT 1 FROM flask_sessions LIMIT 1"))
+    except Exception:
+        try:
+            db.session.execute(db.text("""
+                CREATE TABLE flask_sessions (
+                    id VARCHAR(255) PRIMARY KEY,
+                    data TEXT,
+                    expiry TIMESTAMP
+                )
+            """))
+            db.session.commit()
+        except Exception as e:
+            print(f"Session table note: {e}")
+            db.session.rollback()
+
+    # Migration for processing_results
     try:
         db.session.execute(db.text("SELECT current_stage FROM processing_results LIMIT 1"))
     except Exception:
@@ -61,15 +94,23 @@ with app.app_context():
             db.session.rollback()
 
 
+# ============ Authentication Routes ============
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        remember = request.form.get('remember') == 'on'
+
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
-            login_user(user)
-            return redirect(url_for('index'))
+            login_user(user, remember=remember)
+            # Make session permanent if remember me is checked
+            if remember:
+                session.permanent = True
+            next_page = request.args.get('next')
+            return redirect(next_page or url_for('index'))
         flash('Неверное имя пользователя или пароль', 'danger')
     return render_template('login.html')
 
@@ -86,7 +127,8 @@ def register():
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
-        login_user(user)
+        login_user(user, remember=True)
+        session.permanent = True
         return redirect(url_for('index'))
     return render_template('register.html')
 
@@ -97,6 +139,8 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
+
+# ============ Background Processing ============
 
 def update_stage(result_id, stage, stage_data_update=None):
     """Helper to update processing stage in database."""
@@ -119,7 +163,7 @@ def process_in_background(result_id, filepath, text_type, ocr_model, translate):
     with app.app_context():
         result = ProcessingResult.query.get(result_id)
         try:
-            # OCR/HTR Recognition
+            # Stage 1: OCR/HTR Recognition
             update_stage(result_id, 'recognizing')
 
             if text_type == 'ocr':
@@ -138,7 +182,7 @@ def process_in_background(result_id, filepath, text_type, ocr_model, translate):
                 'recognizing': {'status': 'completed', 'text': text}
             })
 
-            # Translation
+            # Stage 2: Translation (optional)
             if translate:
                 update_stage(result_id, 'translating')
                 text = translate_text(text)
@@ -146,7 +190,7 @@ def process_in_background(result_id, filepath, text_type, ocr_model, translate):
                     'translating': {'status': 'completed', 'text': text}
                 })
 
-            # NER
+            # Stage 3: NER
             update_stage(result_id, 'ner')
             annotated_text_html = perform_ner(text)
 
@@ -158,7 +202,7 @@ def process_in_background(result_id, filepath, text_type, ocr_model, translate):
                 'ner': {'status': 'completed', 'html': annotated_text_html}
             })
 
-            # Relations
+            # Stage 4: Relations
             update_stage(result_id, 'relations')
             relations = extract_relations(text)
             relations_json = json.dumps(relations, ensure_ascii=False, indent=2)
@@ -171,7 +215,7 @@ def process_in_background(result_id, filepath, text_type, ocr_model, translate):
                 'relations': {'status': 'completed', 'json': relations_json, 'count': len(relations)}
             })
 
-            # Result
+            # Final: Completed
             result = ProcessingResult.query.get(result_id)
             result.current_stage = 'completed'
             result.status = 'completed'
@@ -187,6 +231,8 @@ def process_in_background(result_id, filepath, text_type, ocr_model, translate):
                 result.error_message = str(e)
                 db.session.commit()
 
+
+# ============ Main Routes ============
 
 @app.route('/', methods=['GET'])
 @login_required
@@ -210,10 +256,12 @@ def process():
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
 
+    # Save file with unique name
     unique_filename = f"{uuid.uuid4()}_{file.filename}"
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
     file.save(filepath)
 
+    # Create result record
     result = ProcessingResult(
         user_id=current_user.id,
         image_filename=unique_filename,
@@ -227,6 +275,7 @@ def process():
     db.session.add(result)
     db.session.commit()
 
+    # Start background processing
     thread = threading.Thread(
         target=process_in_background,
         args=(result.id, filepath, text_type, ocr_model, translate),
@@ -284,6 +333,8 @@ def my_results():
         .order_by(ProcessingResult.created_at.desc()).all()
     return render_template('my_results.html', results=results)
 
+
+# ============ NER Check Routes ============
 
 @app.route('/ner_check', methods=['GET', 'POST'])
 @login_required

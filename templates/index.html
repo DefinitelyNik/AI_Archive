@@ -2,13 +2,15 @@
 
 {% block title %}Главная - AI Archive{% endblock %}
 
+{% block container_class %}container-fullwidth{% endblock %}
+
 {% block content %}
 <div class="page-header">
     <h1>🤖 Обработка документов</h1>
     <p>Загрузите изображение для OCR/HTR распознавания и анализа связей</p>
 </div>
 
-<div class="index-layout">
+<div class="index-layout-fullwidth">
     <!-- Left: Upload Form -->
     <div class="upload-column">
         <div id="upload-form-container" class="upload-form">
@@ -47,13 +49,13 @@
                     </label>
                 </div>
 
-                <button type="submit" id="submit-btn" class="btn btn-primary btn-block btn-lg">
+                <button type="submit" id="submit-btn" class="btn btn-primary btn-block">
                     🚀 Обработать
                 </button>
             </form>
 
             <div class="upload-hint">
-                <p>💡 После нажатия кнопки результат будет появляться справа по мере обработки</p>
+                <p>💡 Результат появится справа по мере обработки</p>
             </div>
         </div>
     </div>
@@ -118,10 +120,10 @@
 
             <!-- Final Result Actions -->
             <div class="final-actions" id="final-actions" style="display: none;">
-                <a href="#" id="view-full-result-btn" class="btn btn-primary btn-block">
+                <a href="#" id="view-full-result-btn" class="btn btn-primary">
                     📄 Открыть полный результат
                 </a>
-                <button class="btn btn-secondary btn-block" id="new-processing-btn">
+                <button class="btn btn-secondary" id="new-processing-btn">
                     🔄 Новая обработка
                 </button>
             </div>
@@ -196,11 +198,11 @@ function initializeResultsPanel(translateEnabled) {
     resultsColumn.classList.add('slide-in');
 
     // Show/hide translation step
-    translateStep.style.display = translateEnabled ? 'flex' : 'none';
+    translateStep.style.display = translateEnabled ? 'grid' : 'none';
 
     // Reset all steps
     document.querySelectorAll('.timeline-step').forEach(step => {
-        step.classList.remove('active', 'completed', 'error');
+        step.classList.remove('active', 'completed');
         step.querySelector('.step-status').textContent = 'Ожидание...';
         step.querySelector('.step-result').innerHTML = '';
     });
@@ -233,7 +235,6 @@ function updateTimeline(data) {
     const currentStage = data.current_stage;
     const stageData = data.stage_data || {};
 
-    // Determine which stages should be active/completed
     const currentIdx = STAGE_ORDER.indexOf(currentStage);
 
     document.querySelectorAll('.timeline-step').forEach(step => {
@@ -242,7 +243,6 @@ function updateTimeline(data) {
         const statusEl = step.querySelector('.step-status');
         const resultEl = step.querySelector('.step-result');
 
-        // Skip translation step if not enabled
         if (stage === 'translating' && step.style.display === 'none') {
             return;
         }
@@ -250,20 +250,16 @@ function updateTimeline(data) {
         step.classList.remove('active', 'completed');
 
         if (stageIdx < currentIdx || currentStage === 'completed') {
-            // Completed stage
             step.classList.add('completed');
             statusEl.textContent = '✓ Завершено';
 
-            // Show result content
             if (stageData[stage]) {
                 renderStageResult(stage, stageData[stage], resultEl);
             }
         } else if (stageIdx === currentIdx) {
-            // Currently processing
             step.classList.add('active');
             statusEl.textContent = '⚙️ Обработка...';
         } else {
-            // Pending
             statusEl.textContent = 'Ожидание...';
         }
     });
@@ -305,7 +301,7 @@ function renderStageResult(stage, data, container) {
 
 function handleFinalState(data) {
     if (data.status === 'completed') {
-        document.getElementById('final-actions').style.display = 'block';
+        document.getElementById('final-actions').style.display = 'flex';
         document.getElementById('view-full-result-btn').href = `/result/${currentResultId}`;
         document.getElementById('final-actions').classList.add('fade-in');
     } else if (data.status === 'failed') {

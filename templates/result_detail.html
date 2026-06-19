@@ -4,42 +4,46 @@
 
 {% block content %}
 <div class="result-detail">
-    <div class="page-header flex-between">
-        <div>
-            <h1>📄 Результат обработки</h1>
-            <p>{{ result.image_filename or 'Документ' }}</p>
-        </div>
-        <div style="display: flex; gap: 0.75rem;">
-            <a href="{{ url_for('my_results') }}" class="btn btn-secondary">
-                ← Назад
-            </a>
-            <a href="{{ url_for('index') }}" class="btn btn-primary">
-                🚀 Новая обработка
-            </a>
+    <div class="page-header">
+        <div class="flex-between">
+            <div>
+                <h1>📄 Результат обработки</h1>
+                <p>{{ result.image_filename or 'Документ' }}</p>
+            </div>
+            <div style="display: flex; gap: 0.75rem;">
+                <a href="{{ url_for('my_results') }}" class="btn btn-secondary">
+                    ← Назад
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    🚀 Новая обработка
+                </a>
+            </div>
         </div>
     </div>
 
-    <div class="result-meta">
-        <p>
-            <strong>Дата обработки</strong>
-            {{ result.created_at.strftime('%d.%m.%Y %H:%M') }}
-        </p>
-        <p>
-            <strong>Тип обработки</strong>
-            {{ result.text_type|upper }}
-        </p>
-        <p>
-            <strong>Модель</strong>
-            {{ result.ocr_model }}
-        </p>
-        <p>
-            <strong>Перевод</strong>
-            {% if result.translated %}
-                <span class="text-success">✓ Выполнен</span>
-            {% else %}
-                <span class="text-muted">✗ Не выполнялся</span>
-            {% endif %}
-        </p>
+    <div class="result-meta-grid">
+        <div class="meta-item">
+            <div class="meta-label">Дата обработки</div>
+            <div class="meta-value">{{ result.created_at.strftime('%d.%m.%Y %H:%M') }}</div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Тип обработки</div>
+            <div class="meta-value">{{ result.text_type|upper }}</div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Модель</div>
+            <div class="meta-value">{{ result.ocr_model }}</div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Перевод</div>
+            <div class="meta-value">
+                {% if result.translated %}
+                    <span class="text-success">✓ Выполнен</span>
+                {% else %}
+                    <span class="text-muted">✗ Не выполнялся</span>
+                {% endif %}
+            </div>
+        </div>
     </div>
 
     {% if result.image_filename %}
