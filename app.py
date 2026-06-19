@@ -15,26 +15,35 @@ from ner import perform_ner, translate_text
 from relations import extract_relations
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24))
+
+# Секретный ключ для сессий
+app.secret_key = os.environ.get('SECRET_KEY', 'ai-archive-secret-key-change-in-production')
+
+# Максимальный размер загружаемого файла (16MB)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///archive.db'
+
+# Абсолютный путь к базе данных
+basedir = os.path.abspath(os.path.dirname(__file__))
+db_path = os.path.join(basedir, 'archive.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Persistent session configuration
-app.config['SESSION_TYPE'] = 'sqlalchemy'
+# Конфигурация сессий
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_FILE_DIR'] = os.path.join(basedir, 'flask_session')
 app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_KEY_PREFIX'] = 'ai_archive_'
 
+# Папка для загрузок
 UPLOAD_FOLDER = 'static/uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
 
-# Initialize extensions
+# Инициализация расширений
 db.init_app(app)
-
-app.config['SESSION_SQLALCHEMY'] = db
 Session(app)
 
 login_manager = LoginManager()
@@ -42,7 +51,7 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Пожалуйста, войдите в систему'
 
-# Swagger config
+# Swagger конфигурация
 template = {
     "swagger": "2.0",
     "info": {
@@ -59,39 +68,11 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 
-# Create database tables
+# Создание таблиц базы данных
 with app.app_context():
     db.create_all()
-
-    # Create session table for flask-session
-    try:
-        db.session.execute(db.text("SELECT 1 FROM flask_sessions LIMIT 1"))
-    except Exception:
-        try:
-            db.session.execute(db.text("""
-                CREATE TABLE flask_sessions (
-                    id VARCHAR(255) PRIMARY KEY,
-                    data TEXT,
-                    expiry TIMESTAMP
-                )
-            """))
-            db.session.commit()
-        except Exception as e:
-            print(f"Session table note: {e}")
-            db.session.rollback()
-
-    # Migration for processing_results
-    try:
-        db.session.execute(db.text("SELECT current_stage FROM processing_results LIMIT 1"))
-    except Exception:
-        try:
-            db.session.execute(
-                db.text("ALTER TABLE processing_results ADD COLUMN current_stage VARCHAR(30) DEFAULT 'queued'"))
-            db.session.execute(db.text("ALTER TABLE processing_results ADD COLUMN stage_data TEXT DEFAULT '{}'"))
-            db.session.commit()
-        except Exception as e:
-            print(f"Migration note: {e}")
-            db.session.rollback()
+    print(f"Database initialized at: {db_path}")
+    print(f"Session storage: {app.config['SESSION_FILE_DIR']}")
 
 
 # ============ Authentication Routes ============
@@ -106,7 +87,6 @@ def login():
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
             login_user(user, remember=remember)
-            # Make session permanent if remember me is checked
             if remember:
                 session.permanent = True
             next_page = request.args.get('next')
@@ -120,16 +100,20 @@ def register():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+
         if User.query.filter_by(username=username).first():
             flash('Пользователь с таким именем уже существует', 'danger')
             return redirect(url_for('register'))
+
         user = User(username=username)
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
+
         login_user(user, remember=True)
         session.permanent = True
         return redirect(url_for('index'))
+
     return render_template('register.html')
 
 
@@ -155,7 +139,7 @@ def update_stage(result_id, stage, stage_data_update=None):
                     result.stage_data = json.dumps(current_data, ensure_ascii=False)
                 except Exception:
                     result.stage_data = json.dumps(stage_data_update, ensure_ascii=False)
-            db.session.commit()
+                db.session.commit()
 
 
 def process_in_background(result_id, filepath, text_type, ocr_model, translate):

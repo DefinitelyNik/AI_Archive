@@ -3,70 +3,62 @@
 {% block title %}Мои результаты - AI Archive{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>📊 Мои результаты</h1>
-    <p>История всех обработанных вами документов</p>
-</div>
 
-{% if results %}
-<div class="results-grid">
-    {% for result in results %}
-    <div class="result-card" onclick="window.location.href='{{ url_for('view_result', result_id=result.id) }}'">
-        <div class="result-header">
-            <h3>{{ result.image_filename or 'Без имени' }}</h3>
-            <span class="status-badge status-{{ result.status }}">
-                {% if result.status == 'completed' %}
-                    ✓ Готово
-                {% elif result.status == 'processing' %}
-                    ⏳ Обработка
-                {% else %}
-                    ✗ Ошибка
-                {% endif %}
-            </span>
-        </div>
-
-        <div class="result-meta">
-            <p>
-                <strong>Дата:</strong>
-                {{ result.created_at.strftime('%d.%m.%Y %H:%M') }}
-            </p>
-            <p>
-                <strong>Тип:</strong>
-                {{ result.text_type|upper }}
-            </p>
-            <p>
-                <strong>Модель:</strong>
-                {{ result.ocr_model }}
-            </p>
-            {% if result.translated %}
-            <p>
-                <strong>Перевод:</strong>
-                <span class="text-success">✓ Выполнен</span>
-            </p>
-            {% endif %}
-        </div>
-
-        <div class="result-actions">
-            {% if result.status == 'completed' %}
-                <a href="{{ url_for('view_result', result_id=result.id) }}" class="btn btn-primary btn-sm">
-                    👁️ Просмотреть
-                </a>
-            {% elif result.status == 'failed' %}
-                <p class="text-danger" style="font-size: 0.85rem;">
-                    {{ result.error_message[:100] }}{% if result.error_message|length > 100 %}...{% endif %}
-                </p>
-            {% endif %}
-        </div>
+<div class="container">
+    <div class="page-header">
+        <h1>📊 Мои результаты</h1>
+        <p>История всех обработанных вами документов</p>
     </div>
-    {% endfor %}
+
+    {% if results %}
+    <div class="results-grid">
+        {% for result in results %}
+        <div class="result-card">
+            <div class="card-header">
+                <h3>{{ result.image_filename or 'Без имени' }}</h3>
+                {% if result.status == 'completed' %}
+                <span class="status-badge status-success">✓ Готово</span>
+                {% elif result.status == 'processing' %}
+                <span class="status-badge status-warning">⏳ Обработка</span>
+                {% else %}
+                <span class="status-badge status-danger">✗ Ошибка</span>
+                {% endif %}
+            </div>
+
+            <div class="card-body">
+                <div class="result-info">
+                    <p><strong>Дата:</strong> {{ result.created_at.strftime('%d.%m.%Y %H:%M') }}</p>
+                    <p><strong>Тип:</strong> {{ result.text_type|upper }}</p>
+                    <p><strong>Модель:</strong> {{ result.ocr_model }}</p>
+                    {% if result.translated %}
+                    <p><strong>Перевод:</strong> ✓ Выполнен</p>
+                    {% endif %}
+                </div>
+
+                <div class="card-actions">
+                    {% if result.status == 'completed' %}
+                    <a href="{{ url_for('view_result', result_id=result.id) }}" class="btn btn-primary btn-sm">
+                        👁️ Просмотреть
+                    </a>
+                    {% elif result.status == 'failed' %}
+                    <div class="error-message">
+                        {{ result.error_message[:100] }}{% if result.error_message|length > 100 %}...{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <h3>Пока нет результатов</h3>
+        <p>Загрузите первое изображение, чтобы начать работу</p>
+        <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
+            🚀 Начать обработку
+        </a>
+    </div>
+    {% endif %}
 </div>
-{% else %}
-<div class="no-results">
-    <h3>Пока нет результатов</h3>
-    <p>Загрузите первое изображение, чтобы начать работу</p>
-    <a href="{{ url_for('index') }}" class="btn btn-primary mt-2">
-        🚀 Начать обработку
-    </a>
-</div>
-{% endif %}
+
 {% endblock %}
