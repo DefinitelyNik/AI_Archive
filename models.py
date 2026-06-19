@@ -27,7 +27,7 @@ class User(UserMixin, db.Model):
 
 
 class ProcessingResult(db.Model):
-    """Model for storing processing results."""
+    """Model for storing processing results with stage tracking."""
     __tablename__ = 'processing_results'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -39,6 +39,9 @@ class ProcessingResult(db.Model):
     ocr_model = db.Column(db.String(50))
     translated = db.Column(db.Boolean, default=False)
 
+    current_stage = db.Column(db.String(30), default='queued')
+    stage_data = db.Column(db.Text, default='{}')  # JSON with intermediate results
+
     original_text = db.Column(db.Text)
     processed_text_html = db.Column(db.Text)
     relations_json = db.Column(db.Text)
@@ -46,8 +49,9 @@ class ProcessingResult(db.Model):
     status = db.Column(db.String(20), default='processing')
     error_message = db.Column(db.Text)
 
+    STAGES = ['queued', 'recognizing', 'translating', 'ner', 'relations', 'completed', 'failed']
+
     def to_dict(self):
-        """Convert to dictionary for JSON serialization."""
         return {
             'id': self.id,
             'created_at': self.created_at.isoformat(),
@@ -55,6 +59,8 @@ class ProcessingResult(db.Model):
             'text_type': self.text_type,
             'ocr_model': self.ocr_model,
             'translated': self.translated,
+            'current_stage': self.current_stage,
+            'stage_data': self.stage_data,
             'original_text': self.original_text,
             'processed_text_html': self.processed_text_html,
             'relations_json': self.relations_json,
