@@ -1,95 +1,135 @@
 {% extends "base.html" %}
 
-{% block title %}AI Archive - Home{% endblock %}
+{% block title %}Главная - AI Archive{% endblock %}
 
 {% block content %}
-<div class="input-section">
-    <h1>Upload an image</h1>
+<div class="page-header">
+    <h1>🤖 Обработка документов</h1>
+    <p>Загрузите изображение для OCR/HTR распознавания и анализа связей</p>
+</div>
 
-    <form method="POST" enctype="multipart/form-data" class="upload-form">
+<div id="upload-form-container" class="upload-form">
+    <form id="upload-form" enctype="multipart/form-data">
         <div class="form-group">
-            <label class="toggle-label" for="image">Choose an image:</label>
-            <label for="image" class="upload-label">Choose file</label>
-            <input type="file" name="image" id="image" accept="image/*" required style="display: none;">
-            <span class="file-name" id="file-name">No file selected</span>
+            <label for="image" class="required">Изображение</label>
+            <input type="file" id="image" name="image" accept="image/*" required>
         </div>
 
         <div class="form-group">
-            <label class="toggle-label">Text type:</label>
-            <select name="text_type" id="text_type" class="text-type-select" onchange="toggleOCRModel()">
-                <option value="ocr">Machine Printed Text (OCR)</option>
-                <option value="htr">Handwritten Text (HTR)</option>
-            </select>
+            <label>Тип обработки</label>
+            <div class="radio-group">
+                <label>
+                    <input type="radio" name="text_type" value="ocr" checked>
+                    OCR (печатный текст)
+                </label>
+                <label>
+                    <input type="radio" name="text_type" value="htr">
+                    HTR (рукописный текст)
+                </label>
+            </div>
         </div>
 
-        <div class="form-group" id="ocr-model-group">
-            <label class="toggle-label">OCR Model:</label>
-            <select name="ocr_model" id="ocr_model" class="text-type-select">
+        <div class="form-group">
+            <label for="ocr_model">Модель OCR</label>
+            <select id="ocr_model" name="ocr_model">
                 <option value="easyocr">EasyOCR</option>
-                <option value="tesseract">Tesseract 5 (LSTM)</option>
+                <option value="tesseract">Tesseract</option>
             </select>
         </div>
 
         <div class="form-group">
             <label class="checkbox-label">
                 <input type="checkbox" name="translate">
-                Translate pre-revolutionary Russian to post-revolutionary
+                Перевести дореволюционный текст
             </label>
         </div>
 
-        <button type="submit" class="submit-btn">Process</button>
+        <button type="submit" id="submit-btn" class="btn btn-primary btn-block btn-lg">
+            🚀 Обработать
+        </button>
     </form>
 </div>
 
-<div class="legend">
-    <h3>NER Tags Legend:</h3>
-    <ul>
-        <li>
-            <span class="legend-mark ner-per"></span>
-            <span>PER - Person</span>
-        </li>
-        <li>
-            <span class="legend-mark ner-loc"></span>
-            <span>LOC - Location</span>
-        </li>
-        <li>
-            <span class="legend-mark ner-org"></span>
-            <span>ORG - Organization</span>
-        </li>
-        <li>
-            <span class="legend-mark ner-date"></span>
-            <span>DATE - Date</span>
-        </li>
-    </ul>
+<div id="progress-container" style="display: none;">
+    <h3>⚙️ Обработка...</h3>
+    <div class="progress-bar">
+        <div class="progress-fill"></div>
+    </div>
+    <p id="progress-text">Пожалуйста, подождите. Это может занять несколько минут.</p>
+    <p class="text-muted" style="margin-top: 1rem; font-size: 0.85rem;">
+        💡 Вы можете свободно перемещаться по сайту во время обработки
+    </p>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-function toggleOCRModel() {
-    const textType = document.getElementById('text_type').value;
-    const ocrModelGroup = document.getElementById('ocr-model-group');
+document.getElementById('upload-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
 
-    if (textType === 'htr') {
-        ocrModelGroup.style.display = 'none';
-    } else {
-        ocrModelGroup.style.display = 'flex';
-    }
-}
+    const formData = new FormData(this);
+    const submitBtn = document.getElementById('submit-btn');
+    const progressContainer = document.getElementById('progress-container');
+    const uploadForm = document.getElementById('upload-form-container');
 
-document.addEventListener('DOMContentLoaded', function() {
-    toggleOCRModel();
+    submitBtn.disabled = true;
+    uploadForm.style.display = 'none';
+    progressContainer.style.display = 'block';
 
-    const fileInput = document.getElementById('image');
-    const fileName = document.getElementById('file-name');
+    try {
+        const response = await fetch('/process', {
+            method: 'POST',
+            body: formData
+        });
 
-    fileInput.addEventListener('change', function() {
-        if (this.files && this.files.length > 0) {
-            fileName.textContent = this.files[0].name;
+        const data = await response.json();
+
+        if (data.success) {
+            await pollResultStatus(data.result_id);
         } else {
-            fileName.textContent = 'No file selected';
+            alert('Ошибка: ' + data.error);
+            uploadForm.style.display = 'block';
+            progressContainer.style.display = 'none';
+            submitBtn.disabled = false;
         }
-    });
+    } catch (error) {
+        alert('Ошибка соединения: ' + error.message);
+        uploadForm.style.display = 'block';
+        progressContainer.style.display = 'none';
+        submitBtn.disabled = false;
+    }
 });
+
+async function pollResultStatus(resultId) {
+    const progressText = document.getElementById('progress-text');
+    let attempts = 0;
+    const maxAttempts = 300;
+
+    while (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        try {
+            const response = await fetch(`/api/result/${resultId}/status`);
+            const data = await response.json();
+
+            attempts++;
+            progressText.textContent = `Обработка... (${attempts} сек)`;
+
+            if (data.status === 'completed') {
+                window.location.href = `/result/${resultId}`;
+                return;
+            } else if (data.status === 'failed') {
+                alert('Обработка не удалась');
+                window.location.reload();
+                return;
+            }
+        } catch (error) {
+            console.error('Polling error:', error);
+        }
+    }
+
+    alert('Превышено время ожидания. Проверьте страницу "Мои результаты".');
+    window.location.href = '/my_results';
+}
 </script>
 {% endblock %}

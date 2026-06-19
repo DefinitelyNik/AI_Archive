@@ -1,4 +1,7 @@
 Flask
+flask-login
+flask-sqlalchemy
+flask-migrate
 Pillow
 easyocr
 navec

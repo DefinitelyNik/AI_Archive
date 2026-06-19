@@ -1,21 +1,32 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+import json
+import os
+import uuid
+from flask import Flask, render_template, request, redirect, url_for, jsonify, flash
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flasgger import Swagger
+from models import db, User, ProcessingResult
 from ocr import perform_ocr
 from tesseract_ocr import perform_tesseract_ocr
 from htr import perform_htr
 from ner import perform_ner, translate_text
 from relations import extract_relations
-import json
-import os
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)  # обязательно для session
+app.secret_key = os.urandom(24)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///archive.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 UPLOAD_FOLDER = 'static/uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Настройка Flasgger
+db.init_app(app)
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Пожалуйста, войдите в систему'
+
 template = {
     "swagger": "2.0",
     "info": {
@@ -23,192 +34,188 @@ template = {
         "description": "API для AI Archive with ner, ocr and htr models",
         "version": "1.0.0"
     },
-    "consumes": [
-        "multipart/form-data"
-    ],
-    "produces": [
-        "application/json"
-    ],
 }
-
 swagger = Swagger(app, template=template)
 
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    """
-    Загрузка изображения и выбор типа обработки
-    ---
-    tags:
-      - Main
-    consumes:
-      - multipart/form-data
-    parameters:
-      - in: formData
-        name: image
-        type: file
-        required: true
-        description: Изображение для обработки
-      - in: formData
-        name: text_type
-        type: string
-        enum: [ocr, htr]
-        required: true
-        description: Тип текста (машинный или рукописный)
-      - in: formData
-        name: ocr_model
-        type: string
-        enum: [easyocr, tesseract]
-        required: false
-        description: Модель OCR (только для text_type=ocr)
-      - in: formData
-        name: translate
-        type: boolean
-        required: false
-        description: Перевести текст с дореволюционного русского
-    responses:
-      302:
-        description: Редирект на страницу результатов
-    """
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+
+with app.app_context():
+    db.create_all()
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """User login page."""
     if request.method == 'POST':
-        if 'image' not in request.files or 'text_type' not in request.form:
-            return redirect(request.url)
+        username = request.form.get('username')
+        password = request.form.get('password')
 
-        file = request.files['image']
-        text_type = request.form['text_type']
-        ocr_model = request.form.get('ocr_model', 'easyocr')
-        translate = 'translate' in request.form
+        user = User.query.filter_by(username=username).first()
+        if user and user.check_password(password):
+            login_user(user)
+            return redirect(url_for('index'))
+        else:
+            flash('Неверное имя пользователя или пароль')
 
-        if file.filename == '':
-            return redirect(request.url)
+    return render_template('login.html')
 
-        if file and text_type in ['ocr', 'htr']:
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            file.save(filepath)
 
-            if text_type == 'ocr':
-                if ocr_model == 'tesseract':
-                    text = perform_tesseract_ocr(filepath)
-                else:
-                    text = perform_ocr(filepath)
-            else:
-                _, text = perform_htr(filepath)
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    """User registration page."""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
 
-            if translate:
-                text = translate_text(text)
+        if User.query.filter_by(username=username).first():
+            flash('Пользователь с таким именем уже существует')
+            return redirect(url_for('register'))
 
-            annotated_text_html = perform_ner(text)
-            relations = extract_relations(text)
-            relations_json = json.dumps(relations, ensure_ascii=False, indent=2)
+        user = User(username=username)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
 
-            # Сохраняем relations в session вместо URL
-            session['relations'] = relations
-            session['relations_json'] = relations_json
+        login_user(user)
+        return redirect(url_for('index'))
 
-            image_url = url_for('static', filename=f'uploads/{file.filename}')
+    return render_template('register.html')
 
-            return redirect(
-                url_for('results',
-                        image_path=image_url,
-                        extracted_text=annotated_text_html,
-                        text_type=text_type,
-                        ocr_model=ocr_model,
-                        translate=translate))
 
+@app.route('/logout')
+@login_required
+def logout():
+    """Logout user."""
+    logout_user()
+    return redirect(url_for('login'))
+
+
+@app.route('/', methods=['GET'])
+@login_required
+def index():
+    """Main page with upload form."""
     return render_template('index.html')
 
 
-@app.route('/results')
-def results():
+@app.route('/process', methods=['POST'])
+@login_required
+def process():
     """
-    Отображение результатов обработки
-    ---
-    tags:
-      - Results
-    parameters:
-      - in: query
-        name: image_path
-        type: string
-        required: true
-        description: Путь к изображению
-      - in: query
-        name: extracted_text
-        type: string
-        required: true
-        description: Извлечённый и аннотированный текст
-      - in: query
-        name: text_type
-        type: string
-        enum: [ocr, htr]
-        required: false
-        default: ocr
-        description: Тип текста (OCR или HTR)
-      - in: query
-        name: ocr_model
-        type: string
-        enum: [easyocr, tesseract]
-        required: false
-        default: easyocr
-        description: Использованная модель OCR
-      - in: query
-        name: translate
-        type: boolean
-        required: false
-        default: false
-        description: Был ли применён перевод
-      - in: query
-        name: relations
-        type: string
-        required: false
-        description: Извлечённые отношения
-    responses:
-      200:
-        description: Страница с результатами
+    Process image asynchronously and save result.
+    Returns immediately with task ID.
     """
-    image_path = request.args.get('image_path')
-    extracted_text = request.args.get('extracted_text')
-    text_type = request.args.get('text_type', 'ocr')
-    ocr_model = request.args.get('ocr_model', 'easyocr')
-    translate = request.args.get('translate', 'False') == 'True'
+    if 'image' not in request.files or 'text_type' not in request.form:
+        return jsonify({'error': 'Missing required fields'}), 400
 
-    relations = session.get('relations', [])
-    relations_json = session.get('relations_json', '[]')
+    file = request.files['image']
+    text_type = request.form['text_type']
+    ocr_model = request.form.get('ocr_model', 'easyocr')
+    translate = 'translate' in request.form
 
-    if not image_path or not extracted_text:
-        return redirect(url_for('index'))
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
 
-    return render_template('results.html',
-                           image_path=image_path,
-                           extracted_text=extracted_text,
-                           text_type=text_type,
-                           ocr_model=ocr_model,
-                           translate=translate,
-                           relations=relations,
-                           relations_json=relations_json)
+    result = ProcessingResult(
+        user_id=current_user.id,
+        image_filename=file.filename,
+        text_type=text_type,
+        ocr_model=ocr_model,
+        translated=translate,
+        status='processing'
+    )
+    db.session.add(result)
+    db.session.commit()
+
+    unique_filename = f"{uuid.uuid4()}_{file.filename}"
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+    file.save(filepath)
+
+    try:
+        if text_type == 'ocr':
+            if ocr_model == 'tesseract':
+                text = perform_tesseract_ocr(filepath)
+            else:
+                text = perform_ocr(filepath)
+        else:
+            _, text = perform_htr(filepath)
+
+        result.original_text = text
+
+        if translate:
+            text = translate_text(text)
+
+        annotated_text_html = perform_ner(text)
+        result.processed_text_html = annotated_text_html
+
+        relations = extract_relations(text)
+        result.relations_json = json.dumps(relations, ensure_ascii=False, indent=2)
+
+        result.status = 'completed'
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'result_id': result.id,
+            'redirect_url': url_for('view_result', result_id=result.id)
+        })
+
+    except Exception as e:
+        result.status = 'failed'
+        result.error_message = str(e)
+        db.session.commit()
+
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/result/<int:result_id>')
+@login_required
+def view_result(result_id):
+    """View a specific processing result."""
+    result = ProcessingResult.query.get_or_404(result_id)
+
+    if result.user_id != current_user.id:
+        flash('У вас нет доступа к этому результату')
+        return redirect(url_for('my_results'))
+
+    return render_template('result_detail.html', result=result)
+
+
+@app.route('/my_results')
+@login_required
+def my_results():
+    """View all user's processing results."""
+    results = ProcessingResult.query.filter_by(user_id=current_user.id) \
+        .order_by(ProcessingResult.created_at.desc()).all()
+
+    return render_template('my_results.html', results=results)
+
+
+@app.route('/api/result/<int:result_id>/status')
+@login_required
+def get_result_status(result_id):
+    """API endpoint to check result status (for AJAX polling)."""
+    result = ProcessingResult.query.get_or_404(result_id)
+
+    if result.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    return jsonify({
+        'status': result.status,
+        'result_id': result.id
+    })
 
 
 @app.route('/ner_check', methods=['GET', 'POST'])
+@login_required
 def ner_check():
-    """
-    Проверка NER-модели на тексте
-    ---
-    tags:
-      - NER Check
-    parameters:
-      - in: formData
-        name: text
-        type: string
-        required: false
-        description: Текст для анализа
-      - in: formData
-        name: translate
-        type: boolean
-        required: false
-        description: Перевести текст с дореволюционного русского
-    responses:
-      200:
-        description: Страница с результатами NER
-    """
+    """NER check page."""
     extracted_text = None
     relations = []
     relations_json = '[]'
@@ -217,9 +224,11 @@ def ner_check():
     if request.method == 'POST':
         text = request.form.get('text', '')
         translate = 'translate' in request.form
+
         if text:
             if translate:
                 text = translate_text(text)
+
             extracted_text = perform_ner(text)
             relations = extract_relations(text)
             relations_json = json.dumps(relations, ensure_ascii=False, indent=2)
@@ -231,95 +240,5 @@ def ner_check():
                            translate=translate)
 
 
-@app.route('/api/process', methods=['POST'])
-def api_process():
-    """
-    API-эндпоинт для обработки изображений
-    ---
-    tags:
-      - API
-    consumes:
-      - multipart/form-data
-    parameters:
-      - in: formData
-        name: image
-        type: file
-        required: true
-        description: Изображение для обработки
-      - in: formData
-        name: text_type
-        type: string
-        enum: [ocr, htr]
-        required: true
-        description: Тип текста (машинный или рукописный)
-      - in: formData
-        name: ocr_model
-        type: string
-        enum: [easyocr, tesseract]
-        required: false
-        description: Модель OCR (только для text_type=ocr)
-      - in: formData
-        name: translate
-        type: boolean
-        required: false
-        description: Перевести текст с дореволюционного русского
-    responses:
-      200:
-        description: Успешная обработка
-        schema:
-          type: object
-          properties:
-            text:
-              type: string
-              description: Извлечённый текст
-            annotated_text:
-              type: string
-              description: Текст с NER-тегами
-            relations:
-              type: array
-              items:
-                type: array
-              description: Список кортежей (сущность1, отношение, сущность2)
-      400:
-        description: Ошибка ввода
-    """
-    if 'image' not in request.files or 'text_type' not in request.form:
-        return {'error': 'Missing required fields'}, 400
-
-    file = request.files['image']
-    text_type = request.form['text_type']
-    ocr_model = request.form.get('ocr_model', 'easyocr')
-    translate = 'translate' in request.form
-
-    if file.filename == '':
-        return {'error': 'No file selected'}, 400
-
-    if text_type not in ['ocr', 'htr']:
-        return {'error': 'Invalid text_type'}, 400
-
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-    file.save(filepath)
-
-    if text_type == 'ocr':
-        if ocr_model == 'tesseract':
-            text = perform_tesseract_ocr(filepath)
-        else:  # easyocr (по умолчанию)
-            text = perform_ocr(filepath)
-    else:
-        _, text = perform_htr(filepath)
-
-    if translate:
-        text = translate_text(text)
-
-    annotated_text = perform_ner(text)
-    relations = extract_relations(text)
-
-    return {
-        'text': text,
-        'annotated_text': annotated_text,
-        'relations': relations
-    }
-
-
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(debug=True)
