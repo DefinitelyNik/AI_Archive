@@ -10,9 +10,9 @@
                 <h1>📄 Результат обработки</h1>
                 <p>{{ result.image_filename or 'Документ' }}</p>
             </div>
-            <div style="display: flex; gap: 0.75rem;">
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                 <a href="{{ url_for('my_results') }}" class="btn btn-secondary">
-                    ← Назад
+                    ← Назад к списку
                 </a>
                 <a href="{{ url_for('index') }}" class="btn btn-primary">
                     🚀 Новая обработка
@@ -48,7 +48,7 @@
 
     {% if result.image_filename %}
     <div class="result-section result-image">
-        <h3>Изображение</h3>
+        <h3>🖼️ Изображение</h3>
         <img src="{{ url_for('static', filename='uploads/' + result.image_filename) }}"
              alt="Processed image">
     </div>
@@ -56,16 +56,38 @@
 
     {% if result.processed_text_html %}
     <div class="result-section result-text">
-        <h3>Текст с NER-разметкой</h3>
+        <h3>🏷️ Текст с NER-разметкой</h3>
         <div class="ner-output">
             {{ result.processed_text_html|safe }}
+        </div>
+
+        <div class="legend">
+            <h3>Легенда NER-тегов</h3>
+            <ul>
+                <li>
+                    <span class="legend-mark ner-per"></span>
+                    <span>PER</span>
+                </li>
+                <li>
+                    <span class="legend-mark ner-loc"></span>
+                    <span>LOC</span>
+                </li>
+                <li>
+                    <span class="legend-mark ner-org"></span>
+                    <span>ORG</span>
+                </li>
+                <li>
+                    <span class="legend-mark ner-date"></span>
+                    <span>DATE</span>
+                </li>
+            </ul>
         </div>
     </div>
     {% endif %}
 
     {% if result.relations_json %}
     <div class="result-section result-relations">
-        <h3>Извлечённые связи</h3>
+        <h3>🔗 Извлечённые связи</h3>
         <pre class="relations-json">{{ result.relations_json }}</pre>
     </div>
     {% endif %}
