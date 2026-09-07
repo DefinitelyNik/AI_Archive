@@ -3,75 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#111827">
     <title>{% block title %}AI Archive{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <nav class="navbar">
-        <div class="nav-brand">
-            <a href="{{ url_for('index') }}">AI Archive</a>
-        </div>
+    <div class="app-shell">
+        <nav class="navbar" aria-label="Основная навигация">
+            <div class="navbar__inner">
+                <a class="brand" href="{{ url_for('index') }}" aria-label="AI Archive — главная">
+                    <span class="brand__mark" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4.5 5.5A2.5 2.5 0 0 1 7 3h10a2.5 2.5 0 0 1 2.5 2.5v13A2.5 2.5 0 0 1 17 21H7a2.5 2.5 0 0 1-2.5-2.5z"/>
+                            <path d="M8 7h8M8 11h8M8 15h4"/>
+                            <circle cx="17" cy="16.5" r="2.5"/>
+                            <path d="m19 18.5 1.5 1.5"/>
+                        </svg>
+                    </span>
+                    <span>AI Archive</span>
+                    <span class="brand__badge">beta</span>
+                </a>
 
-        {% if current_user.is_authenticated %}
-        <div class="nav-links">
-            <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>
-                🏠 Главная
-            </a>
-            <a href="{{ url_for('ner_check') }}" {% if request.endpoint == 'ner_check' %}class="active"{% endif %}>
-                🔍 NER Проверка
-            </a>
-            <a href="{{ url_for('my_results') }}" {% if request.endpoint == 'my_results' %}class="active"{% endif %}>
-                📊 Мои результаты
-            </a>
-        </div>
+                {% if current_user.is_authenticated %}
+                <button class="mobile-menu-toggle" id="mobile-menu-toggle" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="primary-navigation">
+                    <span></span><span></span><span></span>
+                </button>
+                <div class="nav-cluster" id="primary-navigation">
+                    <div class="nav-links">
+                        <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+                            <span>Рабочее пространство</span>
+                        </a>
+                        <a href="{{ url_for('ner_check') }}" {% if request.endpoint == 'ner_check' %}class="active"{% endif %}>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m16 16 4.5 4.5M8.5 11h5M11 8.5v5"/></svg>
+                            <span>Проверка NER</span>
+                        </a>
+                        <a href="{{ url_for('my_results') }}" {% if request.endpoint == 'my_results' or request.endpoint == 'view_result' %}class="active"{% endif %}>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M7 8h10M7 12h10M7 16h6"/></svg>
+                            <span>Архив</span>
+                        </a>
+                    </div>
+                    <div class="nav-actions">
+                        <button class="theme-toggle" id="theme-toggle" type="button" title="Сменить тему" aria-label="Сменить тему">
+                            <svg class="theme-icon theme-icon--sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+                            <svg class="theme-icon theme-icon--moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 14.4A8.5 8.5 0 0 1 9.6 3.8 8.5 8.5 0 1 0 20.2 14.4Z"/></svg>
+                        </button>
+                        <a href="{{ url_for('my_results') }}" class="user-chip" title="Открыть архив пользователя">
+                            <span class="user-chip__avatar">{{ current_user.username[:1]|upper }}</span>
+                            <span class="user-chip__name">{{ current_user.username }}</span>
+                        </a>
+                        <a href="{{ url_for('logout') }}" class="nav-logout" title="Выйти" aria-label="Выйти">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3M21 19V5a2 2 0 0 0-2-2h-6"/></svg>
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </nav>
 
-        <div class="nav-user">
-            <span class="username">{{ current_user.username }}</span>
-            <button class="theme-toggle" id="theme-toggle" title="Сменить тему">
-                <span id="theme-icon">☀️</span>
-            </button>
-            <a href="{{ url_for('logout') }}" class="btn btn-sm btn-secondary">Выйти</a>
-        </div>
-        {% endif %}
-    </nav>
-
-    <div class="container {% block container_class %}{% endblock %}">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        {% block content %}{% endblock %}
+        <main class="container {% block container_class %}{% endblock %}">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-stack" aria-live="polite">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            <span class="alert__icon" aria-hidden="true">i</span>
+                            <span>{{ message }}</span>
+                        </div>
+                    {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            {% block content %}{% endblock %}
+        </main>
     </div>
 
     <script>
-        // Theme toggle functionality
-        const themeToggle = document.getElementById('theme-toggle');
-        const themeIcon = document.getElementById('theme-icon');
         const html = document.documentElement;
-
-        // Load saved theme
+        const themeToggle = document.getElementById('theme-toggle');
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+        const navigation = document.getElementById('primary-navigation');
         const savedTheme = localStorage.getItem('theme') || 'dark';
+
         html.setAttribute('data-theme', savedTheme);
-        updateThemeIcon(savedTheme);
 
         if (themeToggle) {
             themeToggle.addEventListener('click', () => {
-                const currentTheme = html.getAttribute('data-theme');
-                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-                html.setAttribute('data-theme', newTheme);
-                localStorage.setItem('theme', newTheme);
-                updateThemeIcon(newTheme);
+                const nextTheme = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+                html.setAttribute('data-theme', nextTheme);
+                localStorage.setItem('theme', nextTheme);
             });
         }
 
-        function updateThemeIcon(theme) {
-            if (themeIcon) {
-                themeIcon.textContent = theme === 'dark' ? '☀️' : '🌙';
-            }
+        if (mobileMenuToggle && navigation) {
+            mobileMenuToggle.addEventListener('click', () => {
+                const isOpen = navigation.classList.toggle('is-open');
+                mobileMenuToggle.classList.toggle('is-open', isOpen);
+                mobileMenuToggle.setAttribute('aria-expanded', String(isOpen));
+            });
         }
     </script>
 

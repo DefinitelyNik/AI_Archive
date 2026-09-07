@@ -1,73 +1,64 @@
-from unittest.mock import patch, MagicMock
-from ner import perform_ner, find_dates, annotate_text, translate_text
+"""Tests for NER, date detection and text normalization."""
+
+from unittest.mock import MagicMock, patch
+
+from ner import annotate_text, find_dates, perform_ner, translate_text
 
 
-@patch('ner.NER.load')
-@patch('ner.Navec.load')
-def test_perform_ner(mock_navec_load, mock_ner_load):
-    """Тест функции perform_ner"""
-    mock_ner_instance = MagicMock()
-    mock_ner_instance.return_value = MagicMock()
-    mock_ner_load.return_value = mock_ner_instance
+def test_perform_ner(monkeypatch):
+    """NER loads models lazily and passes markup to the annotation function."""
+    mock_model = MagicMock()
+    mock_model.return_value = MagicMock()
+    mock_navec = MagicMock()
+    monkeypatch.setattr('ner._navec', None)
+    monkeypatch.setattr('ner._ner_model', None)
 
-    mock_navec_instance = MagicMock()
-    mock_navec_load.return_value = mock_navec_instance
+    with patch('ner.os.path.exists', return_value=True), patch(
+        'ner.Navec.load', return_value=mock_navec
+    ), patch('ner.NER.load', return_value=mock_model), patch(
+        'ner.annotate_text', return_value='annotated text'
+    ):
+        assert perform_ner('Тест текст') == 'annotated text'
 
-    mock_markup = MagicMock()
-    mock_span = MagicMock()
-    mock_span.start = 0
-    mock_span.stop = 5
-    mock_span.type = 'PER'
-    mock_markup.spans = [mock_span]
-    mock_markup.text = 'Тест текст'
-    mock_ner_instance.return_value = mock_markup
-
-    with patch('ner.annotate_text') as mock_annotate:
-        mock_annotate.return_value = 'annotated text'
-        result = perform_ner('Тест текст')
-        assert result == 'annotated text'
+    mock_model.navec.assert_called_once_with(mock_navec)
 
 
 def test_find_dates():
-    """Тест функции поиска дат"""
     text = '''Я родился 15.03.1990,
               а в 1995 году уехал.
               В 2000-х годах жил в Москве.'''
     dates = find_dates(text)
 
     assert len(dates) >= 2
-    date_1990_found = any('1990' in text[span_start:span_end]
-                          for span_start, span_end, label
-                          in dates
-                          if label == 'date')
-    assert date_1990_found
+    assert any(
+        '1990' in text[start:stop]
+        for start, stop, label in dates
+        if label == 'date'
+    )
 
 
 def test_find_dates_empty():
-    """Тест с пустым текстом"""
-    dates = find_dates('')
-    assert dates == []
+    assert find_dates('') == []
 
 
-def test_annotate_text():
-    """Тест функции аннотации текста"""
+def test_annotate_text_uses_expected_ner_class_and_escapes_source():
     mock_markup = MagicMock()
     mock_span = MagicMock()
     mock_span.start = 0
     mock_span.stop = 5
     mock_span.type = 'PER'
     mock_markup.spans = [mock_span]
-    mock_markup.text = 'Тест текст'
+    mock_markup.text = 'Тест <script>alert(1)</script>'
 
     with patch('ner.find_dates', return_value=[]):
         result = annotate_text(mock_markup)
-        ref = '<mark class="ner-per">Тест </mark>текст'
-        assert ref in result or 'Тест' in result
+
+    assert '<mark class="ner-per">Тест </mark>' in result
+    assert '&lt;script&gt;alert(1)&lt;/script&gt;' in result
+    assert '<script>' not in result
 
 
 def test_translate_text():
-    """Тест функции перевода дореволюционного текста"""
     input_text = 'Нѣкоторый текст съ дореволюціонными буквами и ѣ'
     expected = 'Некоторый текст с дореволюционными буквами и е'
-    result = translate_text(input_text)
-    assert result == expected
+    assert translate_text(input_text) == expected

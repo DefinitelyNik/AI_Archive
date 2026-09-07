@@ -47,6 +47,7 @@ Dockerfile                Docker image definition
 - [Architecture](docs/ARCHITECTURE.md)
 - [API Documentation](docs/API.md)
 - [Testing and Quality](docs/TESTING.md)
+- [Windows ML Runtime Troubleshooting](docs/RUNTIME_TROUBLESHOOTING.md)
 
 ## Local Run
 

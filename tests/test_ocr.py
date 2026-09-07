@@ -1,26 +1,35 @@
-from unittest.mock import patch
+"""Tests for the EasyOCR wrapper."""
+
+from unittest.mock import MagicMock, patch
+
 from ocr import perform_ocr
 
 
-@patch('ocr.ocr_reader')
-def test_perform_ocr(mock_reader):
-    """Тест функции perform_ocr"""
-    mock_result = [
+def test_perform_ocr():
+    """OCR joins recognized fragments in reading order."""
+    reader = MagicMock()
+    reader.readtext.return_value = [
         [[[10, 10], [100, 10], [100, 50], [10, 50]], 'Привет', 0.9],
-        [[[10, 60], [100, 60], [100, 100], [10, 100]], 'Мир', 0.85]
+        [[[10, 60], [100, 60], [100, 100], [10, 100]], 'Мир', 0.85],
     ]
-    mock_reader.readtext.return_value = mock_result
 
-    text = perform_ocr('dummy_path.jpg')
+    with patch('ocr.os.path.exists', return_value=True), patch(
+        'ocr.get_ocr_reader', return_value=reader
+    ):
+        text = perform_ocr('dummy_path.jpg')
 
-    mock_reader.readtext.assert_called_once_with('dummy_path.jpg')
+    reader.readtext.assert_called_once_with('dummy_path.jpg')
     assert text == 'Привет Мир'
 
 
-@patch('ocr.ocr_reader')
-def test_perform_ocr_empty_result(mock_reader):
-    """Тест perform_ocr с пустым результатом"""
-    mock_reader.readtext.return_value = []
+def test_perform_ocr_empty_result():
+    """OCR returns an empty string when no text fragments are detected."""
+    reader = MagicMock()
+    reader.readtext.return_value = []
 
-    text = perform_ocr('dummy_path.jpg')
+    with patch('ocr.os.path.exists', return_value=True), patch(
+        'ocr.get_ocr_reader', return_value=reader
+    ):
+        text = perform_ocr('dummy_path.jpg')
+
     assert text == ''

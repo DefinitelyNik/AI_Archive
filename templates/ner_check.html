@@ -1,49 +1,78 @@
 {% extends "base.html" %}
 
-{% block title %}NER Проверка - AI Archive{% endblock %}
+{% block title %}Проверка NER — AI Archive{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>🔍 NER Проверка</h1>
-    <p>Введите текст для анализа именованных сущностей и извлечения связей</p>
-</div>
-
-<div class="ner-check-form">
-    <form method="POST">
-        <div class="form-group">
-            <label for="text" class="required">Текст для анализа</label>
-            <textarea id="text" name="text" rows="10" required
-                      placeholder="Введите текст на русском языке...">{{ request.form.text if request.form else '' }}</textarea>
-        </div>
-
-        <div class="form-group">
-            <label class="checkbox-label">
-                <input type="checkbox" name="translate" {% if translate %}checked{% endif %}>
-                Перевести дореволюционный текст
-            </label>
-        </div>
-
-        <button type="submit" class="btn btn-primary">
-            🔬 Анализировать
-        </button>
-    </form>
-</div>
-
-{% if extracted_text %}
-<div class="results-section">
-    <div class="result-section result-text">
-        <h3>Результат NER-анализа</h3>
-        <div class="ner-output">
-            {{ extracted_text|safe }}
-        </div>
+    <div>
+        <div class="eyebrow">Инструмент исследования</div>
+        <h1>Проверка именованных сущностей</h1>
+        <p>Вставьте фрагмент архивного текста, чтобы найти персон, места, организации, даты и связи между ними.</p>
     </div>
-
-    {% if relations %}
-    <div class="result-section result-relations">
-        <h3>Извлечённые связи ({{ relations|length }})</h3>
-        <pre class="relations-json">{{ relations_json }}</pre>
-    </div>
-    {% endif %}
 </div>
-{% endif %}
+
+<div class="analysis-layout">
+    <section class="ner-check-form" aria-labelledby="analysis-form-title">
+        <div class="form-card-header">
+            <span class="form-card-header__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m16 16 4.5 4.5M8.5 11h5"/></svg></span>
+            <div>
+                <h2 id="analysis-form-title">Текст для анализа</h2>
+                <p>Подходит для быстрой проверки фрагмента</p>
+            </div>
+        </div>
+        <form method="POST">
+            <div class="form-group">
+                <label for="text" class="required">Фрагмент документа</label>
+                <textarea id="text" name="text" required placeholder="Вставьте текст на русском языке…">{{ request.form.text if request.form else '' }}</textarea>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="translate" {% if translate %}checked{% endif %}>
+                    <span>Нормализовать дореволюционный текст</span>
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block btn-lg">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m16 16 4.5 4.5"/></svg>
+                Проанализировать текст
+            </button>
+        </form>
+        <div class="analysis-note">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 10v5M12 7h.01"/></svg>
+            <span>Для лучшего результата удалите колонтитулы, номера страниц и технические пометки.</span>
+        </div>
+    </section>
+
+    <section class="results-section" aria-live="polite">
+        {% if extracted_text %}
+        <div class="result-section result-text">
+            <h3><span class="section-heading-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>Результат NER-анализа</h3>
+            <div class="ner-output">{{ extracted_text|safe }}</div>
+            <div class="legend" aria-label="Легенда сущностей">
+                <h3>Типы сущностей</h3>
+                <ul>
+                    <li><span class="legend-mark ner-per"></span>Персона</li>
+                    <li><span class="legend-mark ner-loc"></span>Место</li>
+                    <li><span class="legend-mark ner-org"></span>Организация</li>
+                    <li><span class="legend-mark ner-date"></span>Дата</li>
+                </ul>
+            </div>
+        </div>
+
+        {% if relations %}
+        <div class="result-section result-relations">
+            <h3><span class="section-heading-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg></span>Извлечённые связи · {{ relations|length }}</h3>
+            <pre class="relations-json">{{ relations_json }}</pre>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="analysis-empty">
+            <div>
+                <span class="analysis-empty__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2-2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>
+                <h3>Результат появится здесь</h3>
+                <p>Запустите проверку, чтобы увидеть текст с цветовой разметкой сущностей и машинно извлечённые связи.</p>
+            </div>
+        </div>
+        {% endif %}
+    </section>
+</div>
 {% endblock %}

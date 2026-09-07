@@ -11,12 +11,8 @@ import re
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 
-# logging
+# FIX: Убран logging.basicConfig() — не переопределяем глобальную конфигурацию
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
 
 # Global variables for model caching (loaded on first use)
 _tokenizer = None
@@ -96,28 +92,33 @@ def _load_model():
         logger.debug("Model already loaded, skipping initialization")
         return
 
-    logger.info(f"Loading relation extraction model: {MODEL_NAME}...")
-    logger.debug(f"Device: {'GPU' if torch.cuda.is_available() else 'CPU'}")
-    logger.debug(f"Torch dtype: "
-                 f"{'float16' if torch.cuda.is_available() else 'float32'}")
+    logger.info("Loading relation extraction model: %s ...", MODEL_NAME)
+    logger.debug("Device: %s", 'GPU' if torch.cuda.is_available() else 'CPU')
 
-    device = 0 if torch.cuda.is_available() else -1
     torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
 
     _tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     logger.debug("Tokenizer loaded successfully")
 
-    model = AutoModelForCausalLM.from_pretrained(
-        MODEL_NAME,
-        torch_dtype=torch_dtype,
-        device_map="auto" if torch.cuda.is_available() else None,
-        low_cpu_mem_usage=True,
-    )
-    logger.debug("Model loaded successfully")
-
-    if not torch.cuda.is_available():
+    # FIX: Разделяем логику для GPU и CPU — избегаем конфликта device_map и model.to()
+    if torch.cuda.is_available():
+        model = AutoModelForCausalLM.from_pretrained(
+            MODEL_NAME,
+            torch_dtype=torch_dtype,
+            device_map="auto",
+            low_cpu_mem_usage=True,
+        )
+        device = 0
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            MODEL_NAME,
+            torch_dtype=torch_dtype,
+            low_cpu_mem_usage=True,
+        )
         model.to("cpu")
-        logger.debug("Model moved to CPU")
+        device = -1
+
+    logger.debug("Model loaded successfully")
 
     _generator = pipeline(
         "text-generation",
@@ -126,58 +127,52 @@ def _load_model():
         device=device,
     )
 
-    logger.info(f"Model loaded successfully on "
-                f"{'GPU' if torch.cuda.is_available() else 'CPU'}")
-    logger.debug(f"Generator pipeline created with device={device}")
+    logger.info("Model loaded successfully on %s", 'GPU' if torch.cuda.is_available() else 'CPU')
 
 
 def _parse_llm_response(response: str) -> list:
     """
     Parse the LLM response to extract the list of relations.
-    Handles various formats the model might return.
 
     Args:
-        response (str): Raw text response from the LLM.
+        response: Raw text response from the LLM.
 
     Returns:
-        list: List of tuples (entity1, relation, entity2).
+        List of tuples (entity1, relation, entity2).
     """
     if not response:
         logger.debug("Empty response, returning empty list")
         return []
 
-    logger.debug(f"Parsing LLM response (length: {len(response)} chars)")
-    logger.debug(f"Raw response preview: {response[:200]}...")
+    logger.debug("Parsing LLM response (length: %d chars)", len(response))
 
     # Try to find a Python list in the response
-    # Look for patterns like [...] including multiline
-    match = re.search(r'\[.*\]', response, re.DOTALL)
+    match = re.search(r'\[.*?\]', response, re.DOTALL)
     if match:
         list_str = match.group()
-        logger.debug(f"Found list pattern: {list_str[:150]}...")
+        logger.debug("Found list pattern: %s...", list_str[:150])
         try:
             relations = ast.literal_eval(list_str)
             if isinstance(relations, list):
                 valid_relations = []
                 for rel in relations:
                     if isinstance(rel, (list, tuple)) and len(rel) == 3:
-                        # Ensure all elements are strings
                         entity1 = str(rel[0]).strip()
                         relation_type = str(rel[1]).strip()
                         entity2 = str(rel[2]).strip()
                         if entity1 and relation_type and entity2:
                             valid_relations.append((entity1, relation_type, entity2))
-                            logger.debug(f"Extracted relation: "
-                                         f"({entity1}, {relation_type}, {entity2})")
+                            logger.debug("Extracted relation: (%s, %s, %s)",
+                                         entity1, relation_type, entity2)
                         else:
-                            logger.warning(f"Skipped empty relation: {rel}")
+                            logger.warning("Skipped empty relation: %s", rel)
                     else:
-                        logger.warning(f"Skipped invalid relation format: {rel}")
+                        logger.warning("Skipped invalid relation format: %s", rel)
 
-                logger.info(f"Successfully parsed {len(valid_relations)} relations")
+                logger.info("Successfully parsed %d relations", len(valid_relations))
                 return valid_relations
         except (ValueError, SyntaxError) as e:
-            logger.warning(f"Failed to parse list with ast.literal_eval: {e}")
+            logger.warning("Failed to parse list with ast.literal_eval: %s", e)
 
     # Fallback: try to extract tuples using regex
     logger.debug("Trying regex fallback for tuple extraction")
@@ -186,7 +181,7 @@ def _parse_llm_response(response: str) -> list:
     matches = re.findall(tuple_pattern, response)
     if matches:
         result = [(m[0].strip(), m[1].strip(), m[2].strip()) for m in matches]
-        logger.info(f"Regex fallback extracted {len(result)} relations")
+        logger.info("Regex fallback extracted %d relations", len(result))
         return result
 
     logger.warning("No relations found in response")
@@ -197,38 +192,27 @@ def extract_relations(text: str) -> list:
     """
     Extracts relationships from the input text using a local LLM.
 
-    Uses Qwen2.5-3B-Instruct model to identify semantic relations such as
-    parent-child, birth place, birth date, baptism, marriage, etc.
-
     Args:
-        text (str): Input text to analyze for relationships.
+        text: Input text to analyze for relationships.
 
     Returns:
-        list: List of tuples containing (entity1, relation, entity2).
-
-    Example:
-        >>> relations = extract_relations('Иван родился в Москве в 1890 году.')
-        >>> print(relations)
-        [('Иван', 'место рождения', 'Москва'), ('Иван', 'дата рождения', '1890')]
+        List of tuples containing (entity1, relation, entity2).
     """
     if not text or not text.strip():
         logger.debug("Empty or None text provided, returning empty list")
         return []
 
-    # Skip very short texts that are unlikely to contain relations
     if len(text.strip()) < 10:
-        logger.debug(f"Text too short "
-                     f"({len(text.strip())} chars), returning empty list")
+        logger.debug("Text too short (%d chars), returning empty list", len(text.strip()))
         return []
 
-    logger.info(f"Starting relation extraction for text (length: {len(text)} chars)")
-    logger.debug(f"Input text preview: {text[:100]}...")
+    logger.info("Starting relation extraction for text (length: %d chars)", len(text))
 
     try:
         _load_model()
 
         prompt = RELATION_PROMPT.format(text=text.strip())
-        logger.debug(f"Prompt prepared (length: {len(prompt)} chars)")
+        logger.debug("Prompt prepared (length: %d chars)", len(prompt))
 
         messages = [
             {"role": "system",
@@ -237,7 +221,6 @@ def extract_relations(text: str) -> list:
             {"role": "user", "content": prompt},
         ]
 
-        # Use chat template if available
         if hasattr(_tokenizer, 'apply_chat_template'):
             formatted_prompt = _tokenizer.apply_chat_template(
                 messages,
@@ -249,9 +232,13 @@ def extract_relations(text: str) -> list:
             formatted_prompt = prompt
             logger.debug("Using raw prompt (no chat template available)")
 
-        logger.debug(f"Generation parameters: max_new_tokens={MAX_NEW_TOKENS}, "
-                    f"temperature={TEMPERATURE}, top_p={TOP_P}, "
-                    f"repetition_penalty={REPETITION_PENALTY}")
+        logger.debug("Generation parameters: max_new_tokens=%d, temperature=%.1f, top_p=%.1f",
+                     MAX_NEW_TOKENS, TEMPERATURE, TOP_P)
+
+        # FIX: Проверяем pad_token_id
+        pad_token_id = _tokenizer.eos_token_id
+        if pad_token_id is None:
+            pad_token_id = getattr(_tokenizer, 'pad_token_id', 0)
 
         result = _generator(
             formatted_prompt,
@@ -260,27 +247,31 @@ def extract_relations(text: str) -> list:
             top_p=TOP_P,
             repetition_penalty=REPETITION_PENALTY,
             do_sample=True,
-            pad_token_id=_tokenizer.eos_token_id,
+            pad_token_id=pad_token_id,
         )
 
         response = result[0]["generated_text"]
-        logger.debug(f"Raw generated text length: {len(response)} chars")
+        logger.debug("Raw generated text length: %d chars", len(response))
 
         if response.startswith(formatted_prompt):
             response = response[len(formatted_prompt):]
             logger.debug("Removed prompt prefix from response")
 
-        logger.debug(f"Response to parse: {response[:300]}...")
+        logger.debug("Response to parse: %s...", response[:300])
 
         relations = _parse_llm_response(response)
 
-        logger.info(f"Extraction complete. Found {len(relations)} relations:")
+        logger.info("Extraction complete. Found %d relations:", len(relations))
         for i, rel in enumerate(relations, 1):
-            logger.info(f"  {i}. {rel[0]} → {rel[1]} → {rel[2]}")
+            logger.info(" %d. %s → %s → %s", i, rel[0], rel[1], rel[2])
 
         return relations
 
     except Exception as e:
-        logger.error(f"Error extracting relations: {e}")
+        logger.error("Error extracting relations: %s", e)
         logger.exception("Full traceback:")
         return []
+    finally:
+        # FIX: Очистка GPU памяти
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()

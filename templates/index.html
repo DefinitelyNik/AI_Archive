@@ -1,220 +1,236 @@
 {% extends "base.html" %}
 
-{% block title %}AI Archive - Главная{% endblock %}
-
+{% block title %}Рабочее пространство — AI Archive{% endblock %}
 {% block container_class %}container-fullwidth{% endblock %}
 
 {% block content %}
-
-    <div class="page-header">
-        <h1>🤖 AI Archive</h1>
-        <p>Распознавание текста, перевод, извлечение именованных сущностей и связей</p>
+<div class="workspace-header">
+    <div class="workspace-title">
+        <div class="eyebrow">Архивный интеллект</div>
+        <h1>Превратите исторический документ в данные</h1>
+        <p>Загрузите скан: AI Archive распознает текст, выделит именованные сущности и покажет связи между ними.</p>
     </div>
+    <div class="workspace-stats" title="Все сервисы работают штатно">
+        <span class="workspace-stats__dot"></span>
+        Система готова к обработке
+    </div>
+</div>
 
-    <div class="index-layout-fullwidth">
-        <!-- Left Column - Upload Form -->
-        <div class="upload-column">
-            <form id="uploadForm" class="upload-form" enctype="multipart/form-data">
-                <div class="form-group">
-                    <label for="image" class="required">Изображение</label>
-                    <input type="file" id="image" name="image" accept="image/*" required>
-                </div>
-
-                <div class="form-group">
-                    <label class="required">Тип текста</label>
-                    <div class="radio-group">
-                        <label>
-                            <input type="radio" name="text_type" value="ocr" checked>
-                            Печатный текст (OCR)
-                        </label>
-                        <label>
-                            <input type="radio" name="text_type" value="htr">
-                            Рукописный текст (HTR)
-                        </label>
-                    </div>
-                </div>
-
-                <div class="form-group" id="ocrModelGroup">
-                    <label for="ocr_model">Модель OCR</label>
-                    <select id="ocr_model" name="ocr_model">
-                        <option value="easyocr">EasyOCR</option>
-                        <option value="tesseract">Tesseract</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="translate" name="translate">
-                        Перевести на русский язык
-                    </label>
-                </div>
-
-                <button type="submit" class="btn btn-primary btn-block btn-lg">
-                    🚀 Начать обработку
-                </button>
-
-                <div class="upload-hint">
-                    <p>💡 Поддерживаются форматы: JPG, PNG, TIFF, BMP. Максимальный размер: 16MB</p>
-                </div>
-            </form>
-        </div>
-
-        <!-- Right Column - Results Panel -->
-        <div class="results-column">
-            <div class="results-panel" id="resultsPanel">
-                <div class="panel-header">
-                    <h2>📊 Результаты обработки</h2>
-                    <button id="resetBtn" class="btn btn-secondary btn-sm" style="display: none;">
-                        🔄 Сбросить
-                    </button>
-                </div>
-
-                <!-- Placeholder - показывается когда нет активной обработки -->
-                <div id="resultsPlaceholder" class="results-placeholder">
-                    <div class="placeholder-icon">📄</div>
-                    <h3>Здесь появится результат обработки</h3>
-                    <p>Загрузите изображение в форму слева и нажмите "Начать обработку". Прогресс будет отображаться здесь в реальном времени.</p>
-                    <div class="placeholder-steps">
-                        <div class="placeholder-step">
-                            <span class="step-num">1</span>
-                            <span>Распознавание текста (OCR/HTR)</span>
-                        </div>
-                        <div class="placeholder-step">
-                            <span class="step-num">2</span>
-                            <span>Перевод (опционально)</span>
-                        </div>
-                        <div class="placeholder-step">
-                            <span class="step-num">3</span>
-                            <span>Извлечение именованных сущностей (NER)</span>
-                        </div>
-                        <div class="placeholder-step">
-                            <span class="step-num">4</span>
-                            <span>Построение графа связей</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Processing Timeline - скрыт до начала обработки -->
-                <div id="processingTimeline" class="processing-timeline" style="display: none;">
-                    <!-- Stage 1: Recognition -->
-                    <div class="timeline-step" id="step-recognizing">
-                        <div class="step-indicator">
-                            <div class="step-icon">🔍</div>
-                            <div class="step-line"></div>
-                        </div>
-                        <div class="step-content">
-                            <h4>Распознавание текста</h4>
-                            <p class="step-status">Ожидание...</p>
-                            <div class="step-result" style="display: none;"></div>
-                        </div>
-                    </div>
-
-                    <!-- Stage 2: Translation -->
-                    <div class="timeline-step" id="step-translating" style="display: none;">
-                        <div class="step-indicator">
-                            <div class="step-icon">🌐</div>
-                            <div class="step-line"></div>
-                        </div>
-                        <div class="step-content">
-                            <h4>Перевод текста</h4>
-                            <p class="step-status">Ожидание...</p>
-                            <div class="step-result" style="display: none;"></div>
-                        </div>
-                    </div>
-
-                    <!-- Stage 3: NER -->
-                    <div class="timeline-step" id="step-ner">
-                        <div class="step-indicator">
-                            <div class="step-icon">🏷️</div>
-                            <div class="step-line"></div>
-                        </div>
-                        <div class="step-content">
-                            <h4>Именованные сущности</h4>
-                            <p class="step-status">Ожидание...</p>
-                            <div class="step-result" style="display: none;"></div>
-                        </div>
-                    </div>
-
-                    <!-- Stage 4: Relations -->
-                    <div class="timeline-step" id="step-relations">
-                        <div class="step-indicator">
-                            <div class="step-icon">🔗</div>
-                            <div class="step-line"></div>
-                        </div>
-                        <div class="step-content">
-                            <h4>Извлечение связей</h4>
-                            <p class="step-status">Ожидание...</p>
-                            <div class="step-result" style="display: none;"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Final Actions -->
-                <div id="finalActions" class="final-actions" style="display: none;">
-                    <a href="#" id="viewFullResultBtn" class="btn btn-primary btn-lg">
-                        📖 Открыть полный результат
-                    </a>
-                </div>
-
-                <!-- Error State -->
-                <div id="errorState" class="error-state" style="display: none;">
-                    <div class="error-icon">❌</div>
-                    <h3>Ошибка обработки</h3>
-                    <p id="errorMessage">Произошла неизвестная ошибка</p>
-                    <button onclick="resetResults()" class="btn btn-secondary">
-                        🔄 Попробовать снова
-                    </button>
+<div class="index-layout-fullwidth">
+    <section class="upload-column" aria-labelledby="upload-title">
+        <form id="uploadForm" class="upload-form" enctype="multipart/form-data">
+            <div class="form-card-header">
+                <span class="form-card-header__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M12 16V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>
+                </span>
+                <div>
+                    <h2 id="upload-title">Новый документ</h2>
+                    <p>Выберите файл и параметры распознавания</p>
                 </div>
             </div>
-        </div>
-    </div>
 
+            <div class="form-group">
+                <label class="required" for="image">Изображение</label>
+                <label class="dropzone" id="dropzone" for="image">
+                    <input type="file" id="image" name="image" accept="image/*" required>
+                    <span class="dropzone__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 16V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>
+                    </span>
+                    <span class="dropzone__title">Перетащите скан сюда</span>
+                    <span class="dropzone__help">или нажмите, чтобы выбрать файл</span>
+                    <span class="dropzone__file" id="selectedFile"><svg viewBox="0 0 24 24"><path d="M4 4h11l5 5v11H4z"/><path d="M15 4v5h5"/></svg><span id="selectedFileName"></span></span>
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label class="required">Тип текста</label>
+                <div class="radio-group" role="radiogroup" aria-label="Тип текста">
+                    <label>
+                        <input type="radio" name="text_type" value="ocr" checked>
+                        <span>Печатный текст<br><small>OCR для газет, книг и машинописи</small></span>
+                    </label>
+                    <label>
+                        <input type="radio" name="text_type" value="htr">
+                        <span>Рукописный текст<br><small>HTR для писем и рукописей</small></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group model-field" id="ocrModelGroup">
+                <label for="ocr_model">Модель OCR</label>
+                <select id="ocr_model" name="ocr_model">
+                    <option value="easyocr">EasyOCR — универсальная</option>
+                    <option value="tesseract">Tesseract — печатные документы</option>
+                </select>
+                <p class="field-help">Для современных и чётких печатных текстов рекомендуется Tesseract.</p>
+            </div>
+
+            <div class="form-divider"></div>
+
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="translate" name="translate">
+                    <span>Перевести текст на современный русский</span>
+                </label>
+            </div>
+
+            <div class="form-submit-area">
+                <button type="submit" class="btn btn-primary btn-block btn-lg" id="processButton">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5L20 7"/><path d="M3 12a9 9 0 1 1 18 0"/></svg>
+                    Начать обработку
+                </button>
+                <div class="upload-hint">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 10v5M12 7h.01"/></svg>
+                    <span>JPG, PNG, TIFF или BMP; максимальный размер файла — 16 МБ.</span>
+                </div>
+            </div>
+        </form>
+    </section>
+
+    <section class="results-column" aria-labelledby="results-title">
+        <div class="results-panel" id="resultsPanel">
+            <div class="panel-header">
+                <div class="panel-title-group">
+                    <span class="panel-title-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+                    </span>
+                    <div>
+                        <h2 id="results-title">Панель обработки</h2>
+                        <p>Статус и предварительные результаты появятся здесь</p>
+                    </div>
+                </div>
+                <button id="resetBtn" type="button" class="btn btn-secondary btn-sm" style="display: none;">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg>
+                    Сбросить
+                </button>
+            </div>
+
+            <div id="resultsPlaceholder" class="results-placeholder">
+                <div class="placeholder-art" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h4M9 12h6M9 16h4"/></svg>
+                </div>
+                <h3>Документ ждёт обработки</h3>
+                <p>Настройте параметры слева. После запуска здесь будет виден весь процесс — от распознавания до извлечения связей.</p>
+                <div class="placeholder-steps" aria-label="Этапы обработки">
+                    <div class="placeholder-step"><span class="step-num">01</span><span>Распознавание OCR или HTR</span></div>
+                    <div class="placeholder-step"><span class="step-num">02</span><span>Нормализация и перевод</span></div>
+                    <div class="placeholder-step"><span class="step-num">03</span><span>Поиск сущностей NER</span></div>
+                    <div class="placeholder-step"><span class="step-num">04</span><span>Извлечение связей</span></div>
+                </div>
+            </div>
+
+            <div id="processingTimeline" class="processing-timeline" style="display: none;" aria-live="polite">
+                <div class="timeline-step" id="step-recognizing">
+                    <div class="step-indicator">
+                        <div class="step-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m16 16 4.5 4.5M8.5 11h5"/></svg></div>
+                        <div class="step-line"></div>
+                    </div>
+                    <div class="step-content"><h4>Распознавание текста</h4><p class="step-status">Ожидание запуска</p><div class="step-result" style="display: none;"></div></div>
+                </div>
+                <div class="timeline-step" id="step-translating" style="display: none;">
+                    <div class="step-indicator">
+                        <div class="step-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h9M8.5 3v2M6 5c.5 3 2.2 5.2 4.8 6.5M14 19l4-10 4 10M15.2 16h5.6"/></svg></div>
+                        <div class="step-line"></div>
+                    </div>
+                    <div class="step-content"><h4>Нормализация текста</h4><p class="step-status">Ожидание запуска</p><div class="step-result" style="display: none;"></div></div>
+                </div>
+                <div class="timeline-step" id="step-ner">
+                    <div class="step-indicator">
+                        <div class="step-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6a2 2 0 0 1 2-2h10l4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M16 4v4h4M8 12h8M8 16h5"/></svg></div>
+                        <div class="step-line"></div>
+                    </div>
+                    <div class="step-content"><h4>Именованные сущности</h4><p class="step-status">Ожидание запуска</p><div class="step-result" style="display: none;"></div></div>
+                </div>
+                <div class="timeline-step" id="step-relations">
+                    <div class="step-indicator">
+                        <div class="step-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg></div>
+                        <div class="step-line"></div>
+                    </div>
+                    <div class="step-content"><h4>Связи между сущностями</h4><p class="step-status">Ожидание запуска</p><div class="step-result" style="display: none;"></div></div>
+                </div>
+            </div>
+
+            <div id="finalActions" class="final-actions" style="display: none;">
+                <a href="#" id="viewFullResultBtn" class="btn btn-primary btn-lg">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+                    Открыть полный результат
+                </a>
+            </div>
+
+            <div id="errorState" class="error-state" style="display: none;">
+                <div class="error-icon">!</div>
+                <h3>Не удалось обработать документ</h3>
+                <p id="errorMessage">Произошла неизвестная ошибка</p>
+                <button type="button" onclick="resetResults()" class="btn btn-secondary">Вернуться к настройкам</button>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script>
 let currentResultId = null;
 let pollingInterval = null;
+const processButton = document.getElementById('processButton');
+const processButtonContent = processButton.innerHTML;
 
-// Показ/скрытие модели OCR в зависимости от типа текста
+function updateSelectedFile() {
+    const file = document.getElementById('image').files[0];
+    const selectedFile = document.getElementById('selectedFile');
+    const selectedFileName = document.getElementById('selectedFileName');
+    if (file) {
+        selectedFileName.textContent = file.name;
+        selectedFile.classList.add('is-visible');
+    } else {
+        selectedFile.classList.remove('is-visible');
+    }
+}
+
+document.getElementById('image').addEventListener('change', updateSelectedFile);
+const dropzone = document.getElementById('dropzone');
+['dragenter', 'dragover'].forEach(eventName => dropzone.addEventListener(eventName, event => {
+    event.preventDefault();
+    dropzone.classList.add('is-dragging');
+}));
+['dragleave', 'drop'].forEach(eventName => dropzone.addEventListener(eventName, event => {
+    event.preventDefault();
+    dropzone.classList.remove('is-dragging');
+}));
+dropzone.addEventListener('drop', event => {
+    if (event.dataTransfer.files.length) {
+        document.getElementById('image').files = event.dataTransfer.files;
+        updateSelectedFile();
+    }
+});
+
 document.querySelectorAll('input[name="text_type"]').forEach(radio => {
-    radio.addEventListener('change', (e) => {
-        const ocrModelGroup = document.getElementById('ocrModelGroup');
-        if (e.target.value === 'ocr') {
-            ocrModelGroup.style.display = 'block';
-        } else {
-            ocrModelGroup.style.display = 'none';
-        }
+    radio.addEventListener('change', event => {
+        document.getElementById('ocrModelGroup').style.display = event.target.value === 'ocr' ? 'block' : 'none';
     });
 });
 
-// Обработка отправки формы
-document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const formData = new FormData(e.target);
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '⏳ Загрузка...';
+document.getElementById('uploadForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    processButton.disabled = true;
+    processButton.textContent = 'Подготавливаем задачу…';
 
     try {
-        const response = await fetch('/process', {
-            method: 'POST',
-            body: formData
-        });
-
+        const response = await fetch('/process', { method: 'POST', body: formData });
         const data = await response.json();
-
         if (data.success) {
             currentResultId = data.result_id;
-            startPolling();
             showProcessingView();
+            startPolling();
         } else {
-            showError(data.error || 'Ошибка при запуске обработки');
+            showError(data.error || 'Не удалось запустить обработку');
         }
     } catch (error) {
-        showError('Ошибка соединения с сервером');
+        showError('Не удалось связаться с сервером. Проверьте соединение и попробуйте снова.');
     } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = '🚀 Начать обработку';
+        processButton.disabled = false;
+        processButton.innerHTML = processButtonContent;
     }
 });
 
@@ -227,7 +243,7 @@ function showProcessingView() {
 }
 
 function showPlaceholder() {
-    document.getElementById('resultsPlaceholder').style.display = 'block';
+    document.getElementById('resultsPlaceholder').style.display = 'flex';
     document.getElementById('processingTimeline').style.display = 'none';
     document.getElementById('resetBtn').style.display = 'none';
     document.getElementById('errorState').style.display = 'none';
@@ -236,14 +252,11 @@ function showPlaceholder() {
 
 function startPolling() {
     if (pollingInterval) clearInterval(pollingInterval);
-
     pollingInterval = setInterval(async () => {
         try {
             const response = await fetch(`/api/result/${currentResultId}/progress`);
             const data = await response.json();
-
             updateProgress(data);
-
             if (data.status === 'completed' || data.status === 'failed') {
                 clearInterval(pollingInterval);
                 pollingInterval = null;
@@ -256,73 +269,44 @@ function startPolling() {
 
 function updateProgress(data) {
     const { current_stage, stage_data, status, error } = data;
-
     if (status === 'failed') {
-        showError(error || 'Произошла ошибка при обработке');
+        showError(error || 'Во время обработки документа произошла ошибка');
         return;
     }
 
-    // Определяем порядок этапов
     const stages = ['recognizing', 'translating', 'ner', 'relations'];
     const stageIndex = stages.indexOf(current_stage);
-
-    // Обновляем видимость шага перевода
     const translatingStep = document.getElementById('step-translating');
-    if (data.translated) {
-        translatingStep.style.display = 'grid';
-    } else {
-        translatingStep.style.display = 'none';
-    }
+    translatingStep.style.display = data.translated ? 'grid' : 'none';
 
-    // Обновляем статус каждого шага
     stages.forEach((stage, index) => {
         const stepEl = document.getElementById(`step-${stage}`);
-        if (!stepEl) return;
-
-        // Скрываем шаг перевода если не нужен
-        if (stage === 'translating' && !data.translated) return;
-
+        if (!stepEl || (stage === 'translating' && !data.translated)) return;
         const statusEl = stepEl.querySelector('.step-status');
         const resultEl = stepEl.querySelector('.step-result');
-
-        // Сбрасываем классы
         stepEl.classList.remove('active', 'completed');
-
         const stageInfo = stage_data[stage];
 
         if (stageInfo && stageInfo.status === 'completed') {
-            // Этап завершен
             stepEl.classList.add('completed');
-            statusEl.textContent = '✓ Завершено';
-
-            // Показываем результат
+            statusEl.textContent = 'Готово';
             if (resultEl) {
-                resultEl.style.display = 'flex';
+                resultEl.style.display = 'block';
                 resultEl.innerHTML = getStageResultHTML(stage, stageInfo);
             }
         } else if (index === stageIndex) {
-            // Текущий активный этап
             stepEl.classList.add('active');
-            statusEl.textContent = '⏳ Обрабатывается...';
-            if (resultEl) {
-                resultEl.style.display = 'none';
-                resultEl.innerHTML = '';
-            }
+            statusEl.textContent = 'Выполняется…';
+            if (resultEl) { resultEl.style.display = 'none'; resultEl.innerHTML = ''; }
         } else if (index < stageIndex) {
-            // Уже пройденные этапы (если по какой-то причине нет данных)
             stepEl.classList.add('completed');
-            statusEl.textContent = '✓ Завершено';
+            statusEl.textContent = 'Готово';
         } else {
-            // Ожидание
-            statusEl.textContent = 'Ожидание...';
-            if (resultEl) {
-                resultEl.style.display = 'none';
-                resultEl.innerHTML = '';
-            }
+            statusEl.textContent = 'Ожидание запуска';
+            if (resultEl) { resultEl.style.display = 'none'; resultEl.innerHTML = ''; }
         }
     });
 
-    // Если все завершено - показываем финальные действия
     if (status === 'completed') {
         document.getElementById('finalActions').style.display = 'flex';
         document.getElementById('viewFullResultBtn').href = `/result/${currentResultId}`;
@@ -330,28 +314,15 @@ function updateProgress(data) {
 }
 
 function getStageResultHTML(stage, data) {
-    switch(stage) {
-        case 'recognizing':
-            return `<pre class="stage-text-preview original">${escapeHtml(data.text || '')}</pre>`;
-
-        case 'translating':
-            return `<pre class="stage-text-preview translated">${escapeHtml(data.text || '')}</pre>`;
-
-        case 'ner':
-            return `<div class="stage-ner-preview ner-output">${data.html || ''}</div>`;
-
+    switch (stage) {
+        case 'recognizing': return `<pre class="stage-text-preview">${escapeHtml(data.text || '')}</pre>`;
+        case 'translating': return `<pre class="stage-text-preview translated">${escapeHtml(data.text || '')}</pre>`;
+        case 'ner': return `<div class="stage-ner-preview ner-output">${data.html || ''}</div>`;
         case 'relations':
-            const count = data.count || 0;
-            let html = `<div class="stage-relations-info">
-                <strong>🔗 Найдено связей: ${count}</strong>
-            </div>`;
-            if (data.json) {
-                html += `<pre class="stage-relations-preview">${escapeHtml(data.json)}</pre>`;
-            }
+            let html = `<div class="stage-relations-info"><strong>Найдено связей: ${data.count || 0}</strong></div>`;
+            if (data.json) html += `<pre class="stage-relations-preview">${escapeHtml(data.json)}</pre>`;
             return html;
-
-        default:
-            return '';
+        default: return '';
     }
 }
 
@@ -366,31 +337,22 @@ function showError(message) {
     document.getElementById('processingTimeline').style.display = 'none';
     document.getElementById('errorState').style.display = 'block';
     document.getElementById('errorMessage').textContent = message;
+    document.getElementById('resetBtn').style.display = 'inline-flex';
 }
 
 function resetResults() {
-    if (pollingInterval) {
-        clearInterval(pollingInterval);
-        pollingInterval = null;
-    }
+    if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
     currentResultId = null;
-
-    // Сбрасываем все шаги
     document.querySelectorAll('.timeline-step').forEach(step => {
         step.classList.remove('active', 'completed');
         const statusEl = step.querySelector('.step-status');
         const resultEl = step.querySelector('.step-result');
-        if (statusEl) statusEl.textContent = 'Ожидание...';
-        if (resultEl) {
-            resultEl.style.display = 'none';
-            resultEl.innerHTML = '';
-        }
+        if (statusEl) statusEl.textContent = 'Ожидание запуска';
+        if (resultEl) { resultEl.style.display = 'none'; resultEl.innerHTML = ''; }
     });
-
     showPlaceholder();
 }
 
 document.getElementById('resetBtn').addEventListener('click', resetResults);
 </script>
-
 {% endblock %}

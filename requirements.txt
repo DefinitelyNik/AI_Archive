@@ -20,3 +20,5 @@ flake8
 accelerate
 sentencepiece
 protobuf
+flask-wtf
+gunicorn

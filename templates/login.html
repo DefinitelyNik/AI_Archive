@@ -1,33 +1,32 @@
 {% extends "base.html" %}
 
-{% block title %}Вход - AI Archive{% endblock %}
+{% block title %}Вход — AI Archive{% endblock %}
 
 {% block content %}
-<div class="auth-container">
-    <h2>С возвращением!</h2>
-    <p class="subtitle">Рады видеть вас снова</p>
-
-    <form method="POST" action="{{ url_for('login') }}">
-        <div class="form-group">
-            <label for="username" class="required">Имя пользователя</label>
-            <input type="text" id="username" name="username" required autofocus>
+<div class="auth-page">
+    <section class="auth-container" aria-labelledby="login-title">
+        <div class="auth-brand">
+            <span class="auth-brand__mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4.5 5.5A2.5 2.5 0 0 1 7 3h10a2.5 2.5 0 0 1 2.5 2.5v13A2.5 2.5 0 0 1 17 21H7a2.5 2.5 0 0 1-2.5-2.5z"/><path d="M8 7h8M8 11h8M8 15h4"/></svg></span>
+            AI Archive
         </div>
+        <h1 id="login-title">С возвращением</h1>
+        <p class="subtitle">Войдите, чтобы продолжить исследование исторических документов.</p>
 
-        <div class="form-group">
-            <label for="password" class="required">Пароль</label>
-            <input type="password" id="password" name="password" required>
-        </div>
-
-        <div class="form-group">
-            <label class="checkbox-label">
-                <input type="checkbox" name="remember" checked>
-                Запомнить меня
-            </label>
-        </div>
-
-        <button type="submit" class="btn btn-primary btn-block btn-lg">Войти</button>
-    </form>
-
-    <p>Нужен аккаунт? <a href="{{ url_for('register') }}">Зарегистрироваться</a></p>
+        <form method="POST" action="{{ url_for('login') }}">
+            <div class="form-group">
+                <label for="username" class="required">Имя пользователя</label>
+                <input type="text" id="username" name="username" required autofocus autocomplete="username" placeholder="Введите имя пользователя">
+            </div>
+            <div class="form-group">
+                <label for="password" class="required">Пароль</label>
+                <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="Введите пароль">
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label"><input type="checkbox" name="remember" checked><span>Оставаться в системе</span></label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block btn-lg">Войти в рабочее пространство</button>
+        </form>
+        <p>Ещё нет аккаунта? <a href="{{ url_for('register') }}">Создать аккаунт</a></p>
+    </section>
 </div>
 {% endblock %}

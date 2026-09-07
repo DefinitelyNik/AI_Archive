@@ -1,8 +1,11 @@
 """Tests for the Flask application."""
 
 import io
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+from PIL import Image
+
 from app import app, db
 
 
@@ -37,18 +40,12 @@ def authenticated_client(client):
     """Create an authenticated test client."""
     from models import User
 
-    # Create test user
     user = User(username='testuser')
     user.set_password('testpass')
     db.session.add(user)
     db.session.commit()
 
-    # Login
-    client.post('/login', data={
-        'username': 'testuser',
-        'password': 'testpass'
-    })
-
+    client.post('/login', data={'username': 'testuser', 'password': 'testpass'})
     return client
 
 
@@ -56,71 +53,70 @@ class TestAuthentication:
     """Tests for authentication routes."""
 
     def test_login_page(self, client):
-        response = client.get('/login')
-        assert response.status_code == 200
+        assert client.get('/login').status_code == 200
 
     def test_register_page(self, client):
-        response = client.get('/register')
-        assert response.status_code == 200
+        assert client.get('/register').status_code == 200
 
     def test_login_success(self, client):
         from models import User
+
         user = User(username='testuser')
         user.set_password('testpass')
         db.session.add(user)
         db.session.commit()
 
-        response = client.post('/login', data={
-            'username': 'testuser',
-            'password': 'testpass'
-        }, follow_redirects=True)
+        response = client.post(
+            '/login',
+            data={'username': 'testuser', 'password': 'testpass'},
+            follow_redirects=True,
+        )
         assert response.status_code == 200
 
     def test_logout(self, authenticated_client):
-        response = authenticated_client.get('/logout', follow_redirects=True)
-        assert response.status_code == 200
+        assert authenticated_client.get('/logout', follow_redirects=True).status_code == 200
 
 
 class TestProtectedRoutes:
     """Tests for routes that require authentication."""
 
     def test_index_requires_login(self, client):
-        response = client.get('/')
-        assert response.status_code == 302  # Redirect to login
+        assert client.get('/').status_code == 302
 
     def test_index_authenticated(self, authenticated_client):
-        response = authenticated_client.get('/')
-        assert response.status_code == 200
+        assert authenticated_client.get('/').status_code == 200
 
     def test_my_results_requires_login(self, client):
-        response = client.get('/my_results')
-        assert response.status_code == 302
+        assert client.get('/my_results').status_code == 302
 
     def test_my_results_authenticated(self, authenticated_client):
-        response = authenticated_client.get('/my_results')
-        assert response.status_code == 200
+        assert authenticated_client.get('/my_results').status_code == 200
 
 
 class TestProcessing:
     """Tests for image processing."""
 
     def test_process_requires_login(self, client):
-        response = client.post('/process')
-        assert response.status_code == 302
+        assert client.post('/process').status_code == 302
 
     def test_process_with_image(self, authenticated_client, mock_heavy_functions):
-        data = {
-            'image': (io.BytesIO(b"fake image data"), 'test.jpg'),
-            'text_type': 'ocr',
-            'ocr_model': 'easyocr'
-        }
-        response = authenticated_client.post('/process',
-                                            data=data,
-                                            content_type='multipart/form-data')
+        image_stream = io.BytesIO()
+        Image.new('RGB', (2, 2), color='white').save(image_stream, format='PNG')
+        image_stream.seek(0)
+
+        response = authenticated_client.post(
+            '/process',
+            data={
+                'image': (image_stream, 'test.png'),
+                'text_type': 'ocr',
+                'ocr_model': 'easyocr',
+            },
+            content_type='multipart/form-data',
+        )
         assert response.status_code == 200
-        data = response.get_json()
-        assert data['success'] is True
-        assert 'result_id' in data
+        payload = response.get_json()
+        assert payload['success'] is True
+        assert 'result_id' in payload
 
 
 if __name__ == '__main__':
